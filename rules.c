@@ -66,6 +66,15 @@ static void shuffledeck(int ix) {
 	}
 }
 
+static void drawcard(int ix) {
+	if(!player[ix].deckn) {
+		if(!player[ix].discardn) return;
+		discardtodeck(ix);
+		shuffledeck(ix);
+	}
+	player[ix].hand[player[ix].handn++]=player[ix].deck[--player[ix].deckn];
+}
+
 /* player management ********************************************************/
 
 static void resetplayer(int ix) {
@@ -136,8 +145,9 @@ static void parsecardtxt(int id,char *filename) {
 			i=0;
 			do {
 				if((c=fgetc(f))==EOF) error("parsecardtxt: expected \" in file %s when reading property %s.\n",filename,s);
+				if(c=='\"') break;
 				if(i<MAXSMALLS-1) card[id].fullname[i++]=c;
-			} while(c!='\"');
+			} while(1);
 			card[id].fullname[i]=0;
 		} else error("parsecardtxt: unknown card property %s.\n",s);
 	}
@@ -186,13 +196,17 @@ void shutdowncard() {
 /* test */
 
 static void playgame() {
-	printf("whee, entering infinite play loop\n");
+	int i,j;
+	for(i=0;i<players;i++) for(j=0;j<5;j++) drawcard(i);
 	while(1) {
-		
-		
-		
+		for(i=0;i<player[currentplayer].handn;i++) printf("%s ",card[player[currentplayer].hand[i]].shortname);
+		printf("\n");
+		break;
+
+		/* draw 5 new cards */
 		currentplayer=(currentplayer+1)%players;
 	}
+	puts("whee game over");
 }
 
 void testplay() {
