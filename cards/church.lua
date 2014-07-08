@@ -1,0 +1,8 @@
+-- ask player to choose between 0 and 4 cards from hand
+-- loop through each of them and put them in trash
+--
+-- pseudocode in non-lua follows
+--
+-- list = selectcardsfromhand(0,4)
+-- for i=0 to list.length
+--   trash(list[i].card)

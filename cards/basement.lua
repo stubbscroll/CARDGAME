@@ -1,0 +1,10 @@
+-- player selects any number of cards from hand
+-- all selected cards are discarded, and player draws a card for each card
+-- discarded
+--
+-- pseudocode
+--
+-- list=playerselectsfromhand(0,999)
+-- for i=0;i<list.length;i++
+--   discard(i)
+-- add_card(list.length)
