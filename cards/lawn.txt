@@ -1,3 +1,0 @@
-type victory
-victory-points 1
-money-cost 2

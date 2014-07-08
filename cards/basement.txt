@@ -1,2 +1,0 @@
-type action
-money-cost 2

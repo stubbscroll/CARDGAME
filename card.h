@@ -6,7 +6,11 @@
 #include <lauxlib.h>
 
 /* game.c */
-#define MAXCARDS 1000
+
+void error(char *,...);
+
+/* rules.c */
+
 #define MAXSMALLS 127
 #define MAXLARGES 65535
 
@@ -20,21 +24,41 @@
 #define TYPE_DURATION 64
 #define TYPE_LOOTER 128
 
+#define MAXCARDS 1000
+
 struct card_t {
 	lua_State *lua;             /* lua script for card */
-	char name[MAXSMALLS];       /* short card name */
+	char shortname[MAXSMALLS];  /* short card name */
+	char fullname[MAXSMALLS];   /* full name with proper typesetting */
 	int type;                   /* bitmask with card types */
-	int money;                  /* cost of card in money */
-	int potion;                 /* cost of card in potions */
 	/* TODO detailed textual description for card */
 	/* TODO card graphics */
-	/* TODO pointer-thing to lua function */
 };
 
-extern struct card_t card[MAXCARDS]; /* cards */
-extern int cards;                    /* number of cards */
+#define MAXCARD 300
+#define MAXPLAYER 10
 
-/* rules.c */
+struct player_t {
+	int deck[MAXCARD];      /* cards in deck (index into card[]) */
+	int deckn;              /* number of cards in deck */
+	int hand[MAXCARD];      /* cards in hand */
+	int handn;
+	int discard[MAXCARD];   /* discard pile */
+	int discardn;
+
+	int vp;                 /* number of victory point tokens */
+
+	int action;             /* number of actions left */
+	int money;              /* amount of money to spend */   
+	int potion;             /* amount of potions to spend */
+};
+
+void initcard();
+void shutdowncard();
+
+/* test */
+
+void testplay();
 
 /* TODO lua-interface functions like adding actions, cards, money, buys etc */
 

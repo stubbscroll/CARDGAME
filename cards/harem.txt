@@ -1,3 +1,1 @@
 type { treasure victory }
-victory-points 2
-money-cost 6

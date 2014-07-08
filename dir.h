@@ -29,4 +29,7 @@ int findfirst(char *const,dir_t *);
 int findnext(dir_t *);
 void findclose(dir_t *);
 
+void getextension(const char *const,char *,const int);
+void getbasefilename(const char *const,char *,const int);
+
 #endif

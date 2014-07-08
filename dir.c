@@ -1,5 +1,6 @@
 /* small re-entrant dir library by me, which is a wrapper for os-specific
    routines */
+#include <string.h>
 #include "dir.h"
 
 #ifdef _WIN32
@@ -55,4 +56,25 @@ void findclose(dir_t *h) {
 #else
 	closedir(h->d);
 #endif
+}
+
+/* utility functions! */
+
+/* get extension from file name, s is a buffer of n characters */
+void getextension(const char *const t,char *s,const int n) {
+	int p=strlen(t)-1,j;
+	while(p && t[p]!='.') p--;
+	if(p<0) s[0]=0;
+	else {
+		for(j=0,p++;t[p] && j<n-1;p++) s[j++]=t[p];
+		s[j]=0;
+	}
+}
+
+void getbasefilename(const char *const t,char *s,const int n) {
+	int p=strlen(t)-1,j;
+	while(p && t[p]!='.') p--;
+	if(p<0) p=strlen(t);
+	for(j=0;j<n-1 && t[j] && t[j]!='.';j++) s[j]=t[j];
+	s[j]=0;
 }
