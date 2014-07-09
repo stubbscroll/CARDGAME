@@ -1,4 +1,4 @@
-this is a card game which is suspiciuously similar to another card game, and
+this is a card game which is suspiciously similar to another card game, and
 the goal is to clone its functionality as well as making new functionality and
 customizability.
 

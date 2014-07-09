@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <time.h>
 #include "card.h"
 #include "dir.h"
 
@@ -113,7 +114,6 @@ static void gaincard(int ix,int id) {
 /* play a card and activate its effects */
 static void playcard(int id) {
 	lua_getglobal(card[id].lua,"on_play");
-	printf("about to call function on_play\n");
 	if(lua_pcall(card[id].lua,0,0,0)) error("playcard: error calling 'on_play': %s\n",lua_tostring(card[id].lua,-1));
 }
 
@@ -124,39 +124,49 @@ static void movecard(int ix,int *from,int *lenf,int *to,int *lent) {
 	(*lenf)--;
 }
 
+/* move all cards from pile from to pile to */
+static void movepile(int *from,int *lenf,int *to,int *lent) {
+	/* todo */
+}
+
 /* functions that are callable from lua scripts *****************************/
 
+/* give current player cards */
 static int add_card(lua_State *L) {
-	int argc=lua_gettop(L);
-	if(argc!=1) error("add_card: expected 1 arg, got %d.\n",argc);
+	if(lua_gettop(L)!=1) error("add_card: expected 1 arg, got %d.\n",lua_gettop(L));
+	/* todo draw cards */
 	return 0;
 }
 
+/* give current player more actions */
 static int add_action(lua_State *L) {
-	int argc=lua_gettop(L);
-	if(argc!=1) error("add_card: expected 1 arg, got %d.\n",argc);
+	if(lua_gettop(L)!=1) error("add_card: expected 1 arg, got %d.\n",lua_gettop(L));
+	/* give more actions to current player */
+	player[currentplayer].action+=strtol(lua_tostring(L,1),0,10);
 	return 0;
 }
 
+/* give current player more money */
 static int add_money(lua_State *L) {
-	int argc;
-	printf("in addmoney\n");
-	argc=lua_gettop(L);
-	if(argc!=1) error("add_card: expected 1 arg, got %d.\n",argc);
-	/* add money! */
-	player[currentplayer].money+=strtol(lua_tostring(L,0),0,10);
+	if(lua_gettop(L)!=1) error("add_card: expected 1 arg, got %d.\n",lua_gettop(L));
+	/* give more money to current player */
+	player[currentplayer].money+=strtol(lua_tostring(L,1),0,10);
 	return 0;
 }
 
+/* give current player more potions */
 static int add_potion(lua_State *L) {
-	int argc=lua_gettop(L);
-	if(argc!=1) error("add_card: expected 1 arg, got %d.\n",argc);
+	if(lua_gettop(L)!=1) error("add_card: expected 1 arg, got %d.\n",lua_gettop(L));
+	/* give more potion to current player */
+	player[currentplayer].potion+=strtol(lua_tostring(L,1),0,10);
 	return 0;
 }
 
+/* give current player more buys */
 static int add_buy(lua_State *L) {
-	int argc=lua_gettop(L);
-	if(argc!=1) error("add_card: expected 1 arg, got %d.\n",argc);
+	if(lua_gettop(L)!=1) error("add_card: expected 1 arg, got %d.\n",lua_gettop(L));
+	/* give more buys to current player */
+	player[currentplayer].buy+=strtol(lua_tostring(L,1),0,10);
 	return 0;
 }
 
@@ -180,7 +190,7 @@ static void parsecardtxt(int id,char *filename) {
 	FILE *f;
 	char s[MAXSMALLS],u[MAXSMALLS],c,v[MAXSMALLS];
 	int i;
-	strcpy(u,"cards/");
+	strncpy(u,"cards/",MAXSMALLS-1);
 	strncat(u,filename,MAXSMALLS-1);
 	if(!(f=fopen(u,"r"))) error("parsecardtxt: couldn't open file %s for reading.\n",filename);
 	while(fscanf(f,scans,s)==1) {
@@ -212,7 +222,7 @@ static void parsecardtxt(int id,char *filename) {
 
 void initcard() {
 	dir_t dir;
-	char s[MAXSMALLS];
+	char s[MAXSMALLS],t[MAXSMALLS];
 	int id;
 	/* create cached scanf snippet for reading string with length limit */
 	snprintf(scans,MAXSMALLS,"%%%ds",MAXSMALLS);
@@ -221,15 +231,15 @@ void initcard() {
 	if(!findfirst("cards/*",&dir)) error("couldn't read directory");
 	do {
 		getbasefilename(dir.s,s,MAXSMALLS);
+		if(!strcmp(s,".") || !strcmp(s,"..")) continue;
 		id=getcardid(s);
 		if(id<0) {
 			id=cards++;
 			strncpy(card[id].shortname,s,MAXSMALLS);
 			card[id].type=0;
 			/* lua stuff */
-			card[id].lua=luaL_newstate();
+			if(!(card[id].lua=luaL_newstate())) error("initcard: luaL_newstate failed.\n");
 			luaL_openlibs(card[id].lua);
-			if(!luaL_loadfile(card[id].lua,s)) error("initcard: lua error [%s]\n",lua_tostring(card[id].lua,-1));
 			lua_register(card[id].lua,"add_card",add_card);
 			lua_register(card[id].lua,"add_action",add_action);
 			lua_register(card[id].lua,"add_money",add_money);
@@ -241,6 +251,13 @@ void initcard() {
 		if(!strcmp(s,"txt")) {
 			/* read card type and long description */
 			parsecardtxt(id,dir.s);
+		} else if(!strcmp(s,"lua")) {
+			/* load script */
+			strncpy(t,"cards/",MAXSMALLS-1);
+			strncat(t,dir.s,MAXSMALLS-1);
+			if(luaL_loadfile(card[id].lua,t)) error("initcard: lua error [%s]\n",lua_tostring(card[id].lua,-1));
+			/* priming run of script! crucial for avoiding mysterious crash! */
+			if(lua_pcall(card[id].lua,0,0,0)) error("initcard: lua_pcall failed: %s\n",lua_tostring(card[id].lua,-1));
 		}
 		/* TODO add other file types later such as images */
 	} while(findnext(&dir));
@@ -273,7 +290,7 @@ static void actionphase() {
 		for(i=j=0;i<cur->handn;i++)
 			if(card[player[currentplayer].hand[i]].type&TYPE_ACTION) {
 				list[j]=i;
-				printf("  %d. %s\n",++j,card[player[currentplayer].hand[i]].shortname);
+				printf("  %d. %s\n",++j,card[player[currentplayer].hand[i]].fullname);
 			}
 		while(1) {
 			scanf(scans,s);
@@ -299,7 +316,7 @@ static void buyphase() {
 		for(i=j=0;i<cur->handn;i++)
 			if(card[player[currentplayer].hand[i]].type&TYPE_TREASURE) {
 				list[j]=i;
-				printf("  %d. %s\n",++j,card[player[currentplayer].hand[i]].shortname);
+				printf("  %d. %s\n",++j,card[player[currentplayer].hand[i]].fullname);
 			}
 		while(1) {
 			scanf(scans,s);
@@ -321,12 +338,16 @@ static void playgame() {
 	for(i=0;i<players;i++) for(j=0;j<5;j++) drawcard(i);
 	while(1) {
 		cur=&player[currentplayer];
-		printf("player %d plays:",currentplayer);
+		printf("player %d plays and has",currentplayer);
 		resetplayerturn(currentplayer);
 		for(i=0;i<cur->handn;i++) printf(" %s",card[cur->hand[i]].fullname);
 		putchar('\n');
+		puts("action phase!");
 		actionphase();
+		puts("buy phase!");
 		buyphase();
+
+		printf("player has %d actions, %d money, %d buys, %d potions\n",cur->action,cur->money,cur->buy,cur->potion);
 		break;
 
 		/* draw 5 new cards */
@@ -338,6 +359,7 @@ static void playgame() {
 void testplay() {
 	int i,j,c;
 	players=2;
+	srand(time(0));
 	for(i=0;i<players;i++) {
 		resetplayer(i);
 		c=getcardid("copper");
