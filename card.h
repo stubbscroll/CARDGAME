@@ -25,6 +25,7 @@ void error(char *,...);
 #define TYPE_LOOTER 128
 #define TYPE_RUINS 256
 #define TYPE_SHELTER 512
+#define TYPE_PRIZE 1024
 
 #define MAXCARDS 1000
 
@@ -39,6 +40,7 @@ struct card_t {
 
 #define MAXCARD 300
 #define MAXPLAYER 10
+#define MAXPILES 25
 
 struct player_t {
 	int deck[MAXCARD];      /* cards in deck (index into card[]) */
@@ -56,6 +58,12 @@ struct player_t {
 	int money;              /* amount of money to spend */   
 	int potion;             /* amount of potions to spend */
 	int buy;                /* number of buys */
+};
+
+struct piles_t {
+	int pile[MAXCARD];
+	int pilen;
+	/* todo type. kingdom, supply, non-supply (such as prizes) */
 };
 
 void initcard();

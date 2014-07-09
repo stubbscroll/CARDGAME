@@ -25,18 +25,20 @@
      instance, when using swindler, jester etc)
    - black market and its special rules
    - possession and all its special rules
+   - piles with different cards: ruins and knights. as it stands now, each
+     different card would need its own file, but should somehow be grouped
    suggestions
    - have can_buy() in each card returning true/false
    - have get_money() in each treasure card returning value
    - have get_victory() in each victory card returning value
-   todo
-   - learn to call lua functions from c!
 */
 
-static char scans[MAXSMALLS];             /* scanf string limit */
+static char scans[MAXSMALLS];             /* scanf string limit snippet */
 
 static struct card_t card[MAXCARDS];      /* list of cards */
 static int cards;
+static struct pile_t pile[MAXPILES];      /* supply etc */
+static int piles;
 static struct player_t player[MAXPLAYER]; /* player info */
 static int players;
 static int currentplayer;
@@ -183,6 +185,7 @@ static void setcardproperty(int id,char *s) {
 	else if(!strcmp(s,"looter")) card[id].type|=TYPE_LOOTER;
 	else if(!strcmp(s,"ruins")) card[id].type|=TYPE_RUINS;
 	else if(!strcmp(s,"shelter")) card[id].type|=TYPE_SHELTER;
+	else if(!strcmp(s,"prize")) card[id].type|=TYPE_PRIZE;
 	else error("setcardproperty: unknown type %s.\n",s);
 }
 
