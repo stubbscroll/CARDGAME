@@ -60,7 +60,7 @@ struct player_t {
 	int buy;                /* number of buys */
 };
 
-struct piles_t {
+struct pile_t {
 	int pile[MAXCARD];
 	int pilen;
 	/* todo type. kingdom, supply, non-supply (such as prizes) */
