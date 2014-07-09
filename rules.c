@@ -99,15 +99,6 @@ static int add_buy(lua_State *L) { return 0; }
 
 /* init etc *****************************************************************/
 
-#define TYPE_ACTION 1
-#define TYPE_VICTORY 2
-#define TYPE_TREASURE 4
-#define TYPE_ATTACK 8
-#define TYPE_CURSE 16
-#define TYPE_REACTION 32
-#define TYPE_DURATION 64
-#define TYPE_LOOTER 128
-
 static void setcardproperty(int id,char *s) {
 	if(!strcmp(s,"action")) card[id].type|=TYPE_ACTION;
 	else if(!strcmp(s,"victory")) card[id].type|=TYPE_VICTORY;
@@ -117,6 +108,9 @@ static void setcardproperty(int id,char *s) {
 	else if(!strcmp(s,"reaction")) card[id].type|=TYPE_REACTION;
 	else if(!strcmp(s,"duration")) card[id].type|=TYPE_DURATION;
 	else if(!strcmp(s,"looter")) card[id].type|=TYPE_LOOTER;
+	else if(!strcmp(s,"ruins")) card[id].type|=TYPE_RUINS;
+	else if(!strcmp(s,"shelter")) card[id].type|=TYPE_SHELTER;
+	else error("setcardproperty: unknown type %s.\n",s);
 }
 
 static void parsecardtxt(int id,char *filename) {
@@ -193,12 +187,37 @@ void shutdowncard() {
 	for(i=0;i<cards;i++) lua_close(card[i].lua);
 }
 
-/* test */
+/* everything below this point is extremely temporary placeholderish code to
+   get very basic gameplay up */
+
+static void resetturn() {
+	/* TODO duration effects go here */
+	player[currentplayer].action=1;
+	player[currentplayer].money=0;
+	player[currentplayer].potion=0;
+	player[currentplayer].buy=1;
+}
+
+static int hasactioncards() {
+	int i;
+	for(i=0;i<player[currentplayer].handn;i++)
+		if(card[player[currentplayer].hand[i]].type&TYPE_ACTION) return 1;
+	return 0;
+}
+
+static void actionphase() {
+	while(hasactioncards()) {
+		printf("play 
+	}
+}
 
 static void playgame() {
 	int i,j;
 	for(i=0;i<players;i++) for(j=0;j<5;j++) drawcard(i);
 	while(1) {
+		resetturn();
+		actionphase();
+		buyphase();
 		for(i=0;i<player[currentplayer].handn;i++) printf("%s ",card[player[currentplayer].hand[i]].shortname);
 		printf("\n");
 		break;

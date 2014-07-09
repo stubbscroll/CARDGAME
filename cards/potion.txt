@@ -1,0 +1,2 @@
+type treasure
+name "Potion"

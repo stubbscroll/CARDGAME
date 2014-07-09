@@ -1,1 +1,2 @@
 type { treasure victory }
+name "Harem"

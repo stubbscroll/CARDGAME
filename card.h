@@ -23,6 +23,8 @@ void error(char *,...);
 #define TYPE_REACTION 32
 #define TYPE_DURATION 64
 #define TYPE_LOOTER 128
+#define TYPE_RUINS 256
+#define TYPE_SHELTER 512
 
 #define MAXCARDS 1000
 
@@ -45,12 +47,15 @@ struct player_t {
 	int handn;
 	int discard[MAXCARD];   /* discard pile */
 	int discardn;
+	int playarea[MAXCARD];  /* play area */
+	int playarean;
 
 	int vp;                 /* number of victory point tokens */
 
 	int action;             /* number of actions left */
 	int money;              /* amount of money to spend */   
 	int potion;             /* amount of potions to spend */
+	int buy;                /* number of buys */
 };
 
 void initcard();
