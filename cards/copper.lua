@@ -1,4 +1,5 @@
 function on_play()
+  print("in on_play")
   add_money(1)
 end
 

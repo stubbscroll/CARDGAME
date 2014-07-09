@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <ctype.h>
 #include "card.h"
 #include "dir.h"
 
@@ -31,11 +32,22 @@
    - learn to call lua functions from c!
 */
 
-static struct card_t card[MAXCARDS];
+static char scans[MAXSMALLS];             /* scanf string limit */
+
+static struct card_t card[MAXCARDS];      /* list of cards */
 static int cards;
-static struct player_t player[MAXPLAYER];
+static struct player_t player[MAXPLAYER]; /* player info */
 static int players;
 static int currentplayer;
+
+/* aux routines */
+
+/* return 1 if s contains an integer, 0 otherwise */
+static int isinteger(char *s) {
+	if(*s=='-') s++;
+	while(*s && isdigit(*s)) s++;
+	return *s==0;
+}
 
 /* card management **********************************************************/
 
@@ -81,7 +93,16 @@ static void resetplayer(int ix) {
 	player[ix].deckn=0;
 	player[ix].handn=0;
 	player[ix].discardn=0;
+	player[ix].playarean=0;
 	player[ix].vp=0;
+}
+
+static void resetplayerturn(int ix) {
+	/* TODO duration effects go here */
+	player[ix].action=1;
+	player[ix].money=0;
+	player[ix].potion=0;
+	player[ix].buy=1;
 }
 
 /* gain card into discard pile */
@@ -89,13 +110,55 @@ static void gaincard(int ix,int id) {
 	player[ix].discard[player[ix].discardn++]=id;
 }
 
+/* play a card and activate its effects */
+static void playcard(int id) {
+	lua_getglobal(card[id].lua,"on_play");
+	printf("about to call function on_play\n");
+	if(lua_pcall(card[id].lua,0,0,0)) error("playcard: error calling 'on_play': %s\n",lua_tostring(card[id].lua,-1));
+}
+
+/* move card at from[ix] to to and make from compact */
+static void movecard(int ix,int *from,int *lenf,int *to,int *lent) {
+	to[(*lent)++]=from[ix];
+	for(ix++;ix<*lenf;ix++) from[ix-1]=from[ix];
+	(*lenf)--;
+}
+
 /* functions that are callable from lua scripts *****************************/
 
-static int add_card(lua_State *L) { return 0; }
-static int add_action(lua_State *L) { return 0; }
-static int add_money(lua_State *L) { return 0; }
-static int add_potion(lua_State *L) { return 0; }
-static int add_buy(lua_State *L) { return 0; }
+static int add_card(lua_State *L) {
+	int argc=lua_gettop(L);
+	if(argc!=1) error("add_card: expected 1 arg, got %d.\n",argc);
+	return 0;
+}
+
+static int add_action(lua_State *L) {
+	int argc=lua_gettop(L);
+	if(argc!=1) error("add_card: expected 1 arg, got %d.\n",argc);
+	return 0;
+}
+
+static int add_money(lua_State *L) {
+	int argc;
+	printf("in addmoney\n");
+	argc=lua_gettop(L);
+	if(argc!=1) error("add_card: expected 1 arg, got %d.\n",argc);
+	/* add money! */
+	player[currentplayer].money+=strtol(lua_tostring(L,0),0,10);
+	return 0;
+}
+
+static int add_potion(lua_State *L) {
+	int argc=lua_gettop(L);
+	if(argc!=1) error("add_card: expected 1 arg, got %d.\n",argc);
+	return 0;
+}
+
+static int add_buy(lua_State *L) {
+	int argc=lua_gettop(L);
+	if(argc!=1) error("add_card: expected 1 arg, got %d.\n",argc);
+	return 0;
+}
 
 /* init etc *****************************************************************/
 
@@ -115,19 +178,18 @@ static void setcardproperty(int id,char *s) {
 
 static void parsecardtxt(int id,char *filename) {
 	FILE *f;
-	char s[MAXSMALLS],t[MAXSMALLS],u[MAXSMALLS],c,v[MAXSMALLS];
+	char s[MAXSMALLS],u[MAXSMALLS],c,v[MAXSMALLS];
 	int i;
 	strcpy(u,"cards/");
 	strncat(u,filename,MAXSMALLS-1);
 	if(!(f=fopen(u,"r"))) error("parsecardtxt: couldn't open file %s for reading.\n",filename);
-	snprintf(t,MAXSMALLS,"%%%ds",MAXSMALLS);
-	while(fscanf(f,t,s)==1) {
+	while(fscanf(f,scans,s)==1) {
 		if(!strcmp(s,"type")) {
-			if(fscanf(f,t,v)!=1) error("parsecardtxt: unexpected end of file in %s reading property %s.\n",filename,s);
+			if(fscanf(f,scans,v)!=1) error("parsecardtxt: unexpected end of file in %s reading property %s.\n",filename,s);
 			if(strcmp(v,"{")) setcardproperty(id,v);
 			else {
 				while(1) {
-					if(fscanf(f,t,v)!=1) error("parsecardtxt: unexpected end of file in %s reading property %s.\n",filename,s);
+					if(fscanf(f,scans,v)!=1) error("parsecardtxt: unexpected end of file in %s reading property %s.\n",filename,s);
 					if(!strcmp(v,"}")) break;
 					setcardproperty(id,v);
 				}
@@ -152,6 +214,8 @@ void initcard() {
 	dir_t dir;
 	char s[MAXSMALLS];
 	int id;
+	/* create cached scanf snippet for reading string with length limit */
+	snprintf(scans,MAXSMALLS,"%%%ds",MAXSMALLS);
 	/* load cards */
 	cards=0;
 	if(!findfirst("cards/*",&dir)) error("couldn't read directory");
@@ -190,24 +254,65 @@ void shutdowncard() {
 /* everything below this point is extremely temporary placeholderish code to
    get very basic gameplay up */
 
-static void resetturn() {
-	/* TODO duration effects go here */
-	player[currentplayer].action=1;
-	player[currentplayer].money=0;
-	player[currentplayer].potion=0;
-	player[currentplayer].buy=1;
-}
+struct player_t *cur;
 
-static int hasactioncards() {
-	int i;
-	for(i=0;i<player[currentplayer].handn;i++)
-		if(card[player[currentplayer].hand[i]].type&TYPE_ACTION) return 1;
-	return 0;
+/* return number of action cards on hand */
+static int countcardsmask(int mask) {
+	int r,i;
+	for(r=i=0;i<player[currentplayer].handn;i++)
+		if(card[player[currentplayer].hand[i]].type&mask) r++;
+	return r;
 }
 
 static void actionphase() {
-	while(hasactioncards()) {
-		printf("play 
+	int num,i,j;
+	int list[MAXCARD];
+	char s[MAXSMALLS];
+	while((num=countcardsmask(TYPE_ACTION))) {
+		printf("type 1 to %d to play an action card or 0 to skip.\n",num);
+		for(i=j=0;i<cur->handn;i++)
+			if(card[player[currentplayer].hand[i]].type&TYPE_ACTION) {
+				list[j]=i;
+				printf("  %d. %s\n",++j,card[player[currentplayer].hand[i]].shortname);
+			}
+		while(1) {
+			scanf(scans,s);
+			if(isinteger(s)) {
+				j=strtol(s,0,10);
+				if(!j) return;
+				else {
+					playcard(cur->hand[list[j-1]]);
+					movecard(list[j-1],cur->hand,&cur->handn,cur->playarea,&cur->playarean);
+					break;
+				}
+			}
+		}
+	}
+}
+
+static void buyphase() {
+	int num,i,j;
+	int list[MAXCARD];
+	char s[MAXSMALLS];
+	while((num=countcardsmask(TYPE_TREASURE))) {
+		printf("type 1 to %d to play a treasure card or 0 to skip.\n",num);
+		for(i=j=0;i<cur->handn;i++)
+			if(card[player[currentplayer].hand[i]].type&TYPE_TREASURE) {
+				list[j]=i;
+				printf("  %d. %s\n",++j,card[player[currentplayer].hand[i]].shortname);
+			}
+		while(1) {
+			scanf(scans,s);
+			if(isinteger(s)) {
+				j=strtol(s,0,10);
+				if(!j) return;
+				else {
+					playcard(cur->hand[list[j-1]]);
+					movecard(list[j-1],cur->hand,&cur->handn,cur->playarea,&cur->playarean);
+					break;
+				}
+			}
+		}
 	}
 }
 
@@ -215,11 +320,13 @@ static void playgame() {
 	int i,j;
 	for(i=0;i<players;i++) for(j=0;j<5;j++) drawcard(i);
 	while(1) {
-		resetturn();
+		cur=&player[currentplayer];
+		printf("player %d plays:",currentplayer);
+		resetplayerturn(currentplayer);
+		for(i=0;i<cur->handn;i++) printf(" %s",card[cur->hand[i]].fullname);
+		putchar('\n');
 		actionphase();
 		buyphase();
-		for(i=0;i<player[currentplayer].handn;i++) printf("%s ",card[player[currentplayer].hand[i]].shortname);
-		printf("\n");
 		break;
 
 		/* draw 5 new cards */
