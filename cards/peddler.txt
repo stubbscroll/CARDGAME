@@ -1,2 +1,3 @@
 type action
 name "Peddler"
+kingdom

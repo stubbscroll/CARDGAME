@@ -1,3 +1,3 @@
 type victory
-name "Province"
+name "Gardens"
 kingdom

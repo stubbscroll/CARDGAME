@@ -1,2 +1,3 @@
 type treasure
 name "Bank"
+kingdom

@@ -1,9 +1,5 @@
-function on_play()
-  add_money(3)
-end
-
 function on_setup()
-  cards=30
+  cards=(get_players()-1)*10
   pileid=get_piles()
   set_piles(pileid+1)
   set_pile_cards(pileid,cards)

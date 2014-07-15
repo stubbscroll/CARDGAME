@@ -29,13 +29,27 @@ void error(char *,...);
 
 #define MAXCARDS 1000
 
+/* one entry for each different card */
 struct card_t {
 	lua_State *lua;             /* lua script for card */
 	char shortname[MAXSMALLS];  /* short card name */
 	char fullname[MAXSMALLS];   /* full name with proper typesetting */
 	int type;                   /* bitmask with card types */
+	int groupid;                /* pointer to group[] */
+	char iskingdom;							/* 1 if cards in group can be a kingdom pile */
 	/* TODO detailed textual description for card */
 	/* TODO card graphics */
+};
+
+/* groups! a group can contain different cards, like ruins or knights */
+struct group_t {
+	char name[MAXSMALLS];
+	int card[MAXCARDS];         /* id of each card in group */
+	int cards;                  /* number of cards in group */
+	char taken;                 /* 1 if group is in the game */
+	char iskingdom;							/* 1 if cards in group can be a kingdom pile */
+	/* TODO which set the group belongs to. used for deciding whether to use
+	   colony/platinum and ruins */
 };
 
 #define MAXCARD 300
@@ -61,9 +75,14 @@ struct player_t {
 };
 
 struct pile_t {
-	int pile[MAXCARD];
-	int pilen;
-	/* todo type. kingdom, supply, non-supply (such as prizes) */
+	int card[MAXCARD];      /* the cards in this pile, highest index is top */
+	int cards;              /* number of cards in this pile */
+	/* todo type:
+	   kingdom
+	   bane
+	   black market
+	   supply or not (such as prizes, spoils, madman, mercenary and so on)
+	*/
 };
 
 void initcard();
