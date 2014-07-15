@@ -1,7 +1,3 @@
-function on_play()
-  add_card(3)
-end
-
 function on_setup()
   cards=10
   pileid=get_piles()

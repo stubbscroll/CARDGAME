@@ -187,6 +187,22 @@ static void movepile(int *from,int *lenf,int *to,int *lent) {
 /* all these functions are prefixed with L_, and they are called in lua by
    the identifier without prefix */
 
+/* set group[i].taken */
+/* TODO maybe not */
+static int L_set_group_taken(lua_State *L) {
+	int i,j;
+	if(lua_gettop(L)!=2) error("set_group_taken: expected 2 args, got %d.\n",lua_gettop(L));
+	if(!lua_isnumber(L,1)) error("set_group_taken: arg 1 must be int, found %s.\n",lua_tostring(L,1));
+	if(!lua_isnumber(L,2)) error("set_group_taken: arg 2 must be int, found %s.\n",lua_tostring(L,2));
+	i=strtol(lua_tostring(L,1),0,10);
+	j=strtol(lua_tostring(L,2),0,10);
+	if(i<0 || i>=groups) error("set_group_taken: illegal group number %d.\n",i);
+	if(j<0 || j>1) error("set_group_taken: value must be 0 or 1, found %d.\n",j);
+	group[i].taken=j;
+	return 0;
+}
+
+
 /* set pile[i].card[j] */
 static int L_set_pile_card(lua_State *L) {
 	int i,j,k;
@@ -213,6 +229,7 @@ static int L_set_pile_cards(lua_State *L) {
 	i=strtol(lua_tostring(L,1),0,10);
 	j=strtol(lua_tostring(L,2),0,10);
 	if(i<0 || i>=piles) error("set_pile_cards: illegal pile number %d.\n",i);
+	if(j<0) error("set_pile_cards: cards must be nonnegative, found %d.\n",j);
 	pile[i].cards=j;
 	return 0;
 }
@@ -539,8 +556,13 @@ static void generatenewgame() {
 	for(i=0;i<10;i++) {
 		do j=rand()%groups; while(group[j].taken || !group[j].iskingdom);
 		/* TODO add pile to game */
-		
+		printf("kingdom card %d: %s\n",j+1,group[j].name);
+		group[j].taken=1;
+		addpiletogame(j);
 	}
+	/* post process setup! for cards that require additional piles, like
+	   young witch (bane card), black market, urchin (mercenary), tournament
+	   (prizes) etc */
 }
 
 void testplay() {

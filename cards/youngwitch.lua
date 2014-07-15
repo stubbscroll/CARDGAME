@@ -17,5 +17,16 @@ function potion_cost()
 end
 
 function on_setup()
-  -- find bane card and add it to supply
+  cards=10
+  pileid=get_piles()
+  set_piles(pileid+1)
+  set_pile_cards(pileid,cards)
+  for i=0,cards-1,1 do
+    set_pile_card(pileid,i,thiscardid)
+  end
+end
+
+function post_setup()
+  -- add another pile which becomes bane
+  print("TODO bane card")
 end

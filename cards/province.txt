@@ -1,3 +1,2 @@
 type victory
 name "Province"
-kingdom

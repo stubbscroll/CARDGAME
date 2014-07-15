@@ -1,3 +1,2 @@
 type treasure
 name "Platinum"
-kingdom
