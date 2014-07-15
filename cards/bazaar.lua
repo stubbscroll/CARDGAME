@@ -25,3 +25,6 @@ function on_setup()
     set_pile_card(pileid,i,thiscardid)
   end
 end
+
+function post_setup()
+end

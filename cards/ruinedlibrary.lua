@@ -13,3 +13,6 @@ end
 function potion_cost()
   return 0
 end
+
+function post_setup()
+end

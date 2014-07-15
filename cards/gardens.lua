@@ -11,3 +11,6 @@ function on_setup()
     set_pile_card(pileid,i,thisgroupid)
   end
 end
+
+function post_setup()
+end

@@ -540,9 +540,10 @@ static void addpiletogamebyname(char *s) {
 	addpiletogame(id);
 }
 
+#define KINGDOM 10
 /* picks 10 kingdom cards and deals out cards to all players */
 static void generatenewgame() {
-	int i,j;
+	int i,j,id;
 	for(i=0;i<groups;i++) group[i].taken=0;
 	piles=0;
 	/* always add copper, silver, gold, estate, duchy, province, curse */
@@ -553,16 +554,22 @@ static void generatenewgame() {
 	addpiletogamebyname("duchy");
 	addpiletogamebyname("province");
 	addpiletogamebyname("curse");
-	for(i=0;i<10;i++) {
+	for(i=0;i<KINGDOM;i++) {
 		do j=rand()%groups; while(group[j].taken || !group[j].iskingdom);
 		/* TODO add pile to game */
 		printf("kingdom card %d: %s\n",j+1,group[j].name);
 		group[j].taken=1;
 		addpiletogame(j);
 	}
-	/* post process setup! for cards that require additional piles, like
-	   young witch (bane card), black market, urchin (mercenary), tournament
-	   (prizes) etc */
+	/* post-process setup! for special cases like young witch */
+	for(i=0;i<piles;i++) {
+		if(!pile[i].cards) error("generatenewgame: found empty pile.\n");
+		id=pile[i].card[0];
+		if(card[id].iskingdom) {
+			lua_getglobal(card[id].lua,"post_setup");
+			if(lua_pcall(card[id].lua,0,0,0)) error("generatenewgame: %s\n",lua_tostring(card[id].lua,-1));
+		}
+	}
 }
 
 void testplay() {
