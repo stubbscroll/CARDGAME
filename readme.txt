@@ -1,10 +1,23 @@
 this is a card game which is suspiciously similar to another card game, and
-the goal is to clone its functionality as well as making new functionality and
+the goal is to clone its functionality as well as adding new functionality and
 customizability.
 
 the main goal is to dabble in lua rather than obtaining a given end product.
 
 gigantic warning: i can't lua. proceed at your own risk.
+==============================================================================
+TODO
+
+- for all cards, add set_pile_bane(pileid,0) somewhere in on_setup().
+- for all supply cards, add set_pile_supply(pileid,1) somewhere in on_setup().
+  for non-supply cards, add set_pile_supply(pileid,0).
+==============================================================================
+open problems
+- the program crashes when i try to call a non-existing lua function. desired
+  behaviour: return with error message
+- to add to the above: lua crashes pretty much any time an error occurs.
+  consider following the steps here
+  http://stackoverflow.com/questions/19903762/lua-5-2-compiled-with-mingw32-crashes-my-host-program-when-a-lua-error-occurs
 ==============================================================================
 actual documentation
 

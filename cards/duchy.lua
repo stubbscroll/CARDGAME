@@ -1,3 +1,15 @@
+function victory_points()
+  return 3
+end
+
+function money_cost()
+  return 5
+end
+
+function potion_cost()
+  return 0
+end
+
 function on_setup()
   if get_players()==2 then
     cards=8

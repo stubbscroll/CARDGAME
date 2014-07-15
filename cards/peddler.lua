@@ -12,6 +12,7 @@ function money_cost()
 -- during the buy phase, this costs 2 less per action card you have in play,
 -- but not less than 0
 -- return 8 - 2*num
+  return 8
 end
 
 function potion_cost()

@@ -3,6 +3,18 @@ function on_play()
 -- gain_card(0,4)
 end
 
+function victory_points()
+  return 0
+end
+
+function money_cost()
+  return 3
+end
+
+function potion_cost()
+  return 0
+end
+
 function on_setup()
   cards=10
   pileid=get_piles()

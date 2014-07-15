@@ -77,11 +77,11 @@ struct player_t {
 struct pile_t {
 	int card[MAXCARD];      /* the cards in this pile, highest index is top */
 	int cards;              /* number of cards in this pile */
+	char bane;              /* 1: pile contains bane cards for young witch */
+	char supply;            /* 1: pile is in the supply */
 	/* todo type:
 	   kingdom
-	   bane
 	   black market
-	   supply or not (such as prizes, spoils, madman, mercenary and so on)
 	*/
 };
 

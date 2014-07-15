@@ -1,3 +1,15 @@
+function victory_points()
+  return 0
+end
+
+function money_cost()
+  return 3
+end
+
+function potion_cost()
+  return 0
+end
+
 function on_play()
   add_buy(1)
   add_money(2)

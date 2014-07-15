@@ -23,10 +23,13 @@
      a gold)
    - peddler! the discount should not be applied when outside buy phase (for
      instance, when using swindler, jester etc)
-   - black market and its special rules
+   - black market and its special rules (some examples below)
    - possession and all its special rules
    - piles with different cards: ruins and knights. as it stands now, each
      different card would need its own file, but should somehow be grouped
+   - strange trigging sequences, such as young witch draws black market as
+     bane card which triggers black market setup
+   - players buys young witch via black market which triggers bane setup
    suggestions
    - have can_buy() in each card returning true/false
    - have get_money() in each treasure card returning value
@@ -142,6 +145,15 @@ static void drawcard(int ix) {
 	player[ix].hand[player[ix].handn++]=player[ix].deck[--player[ix].deckn];
 }
 
+/* group (of cards) management */
+
+/* given group name, return index into group list */
+static int getgroupid(char *s) {
+	int i;
+	for(i=0;i<groups;i++) if(!strcmp(s,group[i].name)) return i;
+	return -1;
+}
+
 /* player management ********************************************************/
 
 static void resetplayer(int ix) {
@@ -183,12 +195,121 @@ static void movepile(int *from,int *lenf,int *to,int *lent) {
 	/* todo */
 }
 
+/* new game setup management ************************************************/
+
+/* add pile by group id! */
+static void addpiletogame(int gid) {
+	int id=group[gid].card[0];
+	lua_getglobal(card[id].lua,"on_setup");
+	if(lua_pcall(card[id].lua,0,0,0)) error("addpiletogame: %s\n",lua_tostring(card[id].lua,-1));
+}
+
+static void addpiletogamebyname(char *s) {
+	int id=getgroupid(s);
+	if(id<0) error("generatenewgame: no %s.\n",s);
+	addpiletogame(id);
+}
+
+#define KINGDOM 10
+/* picks 10 kingdom cards and deals out cards to all players */
+static void generatenewgame() {
+	int i,j,id;
+	for(i=0;i<groups;i++) group[i].taken=0;
+	piles=0;
+	/* always add copper, silver, gold, estate, duchy, province, curse */
+	addpiletogamebyname("copper");
+	addpiletogamebyname("silver");
+	addpiletogamebyname("gold");
+	addpiletogamebyname("estate");
+	addpiletogamebyname("duchy");
+	addpiletogamebyname("province");
+	addpiletogamebyname("curse");
+	for(i=0;i<KINGDOM;i++) {
+		do j=rand()%groups; while(group[j].taken || !group[j].iskingdom);
+		/* TODO add pile to game */
+		printf("kingdom card %d: %s\n",j+1,group[j].name);
+		group[j].taken=1;
+		addpiletogame(j);
+	}
+	/* post-process setup! for special cases like young witch */
+	for(i=0;i<piles;i++) {
+		if(!pile[i].cards) error("generatenewgame: found empty pile.\n");
+		id=pile[i].card[0];
+		if(card[id].iskingdom) {
+			lua_getglobal(card[id].lua,"post_setup");
+			if(lua_pcall(card[id].lua,0,0,0)) error("generatenewgame: %s\n",lua_tostring(card[id].lua,-1));
+		}
+	}
+}
+#undef KINGDOM
+
+/* functions that call lua scripts ******************************************/
+
+static int victory_points_L(int id) {
+	/* TODO */
+	return 0;
+}
+
+static int money_cost_L(int id) {
+	int v;
+	lua_getglobal(card[id].lua,"money_cost");
+	if(lua_pcall(card[id].lua,0,1,0)) error("get_card_money_cost: %s\n",lua_tostring(card[id].lua,-1));
+	if(!lua_isnumber(card[id].lua,-1)) error("get_card_money_cost: expected number, got %s.\n",lua_tostring(card[id].lua,-1));
+	v=lua_tonumber(card[id].lua,-1);
+	lua_pop(card[id].lua,1);
+	return v;
+}
+
+static int potion_cost_L(int id) {
+	int v;
+	lua_getglobal(card[id].lua,"potion_cost");
+	if(lua_pcall(card[id].lua,0,1,0)) error("get_card_money_cost: %s\n",lua_tostring(card[id].lua,-1));
+	if(!lua_isnumber(card[id].lua,-1)) error("get_card_money_cost: expected number, got %s.\n",lua_tostring(card[id].lua,-1));
+	v=lua_tonumber(card[id].lua,-1);
+	lua_pop(card[id].lua,1);
+	return v;
+}
+
+
 /* functions that are callable from lua scripts *****************************/
-/* all these functions are prefixed with L_, and they are called in lua by
-   the identifier without prefix */
+/* all these functions are prefixed with L_, and they are called in lua scripts
+   with the identifier without prefix */
+
+/* given index, return cost of card in money */
+static int L_get_card_money_cost(lua_State *L) {
+	int id;
+	if(lua_gettop(L)!=1) error("get_card_money_cost: expected 1 args, got %d.\n",lua_gettop(L));
+	if(!lua_isnumber(L,1)) error("get_card_money_cost: arg 1 must be int, found %s.\n",lua_tostring(L,1));
+	id=strtol(lua_tostring(L,1),0,10);
+	if(id<0 || id>=cards) error("get_card_money_cost: illegal index %d.\n",id);
+	lua_pushnumber(L,money_cost_L(id));
+	return 1;
+}
+
+/* given index, return cost of card in potions */
+static int L_get_card_potion_cost(lua_State *L) {
+	int id;
+	if(lua_gettop(L)!=1) error("get_card_potion_cost: expected 1 args, got %d.\n",lua_gettop(L));
+	if(!lua_isnumber(L,1)) error("get_card_potion_cost: arg 1 must be int, found %s.\n",lua_tostring(L,1));
+	id=strtol(lua_tostring(L,1),0,10);
+	if(id<0 || id>=cards) error("get_card_potion_cost: illegal index %d.\n",id);
+	lua_pushnumber(L,potion_cost_L(id));
+	return 1;
+}
+
+/* get card[i].groupid */
+static int L_get_card_groupid(lua_State *L) {
+	int i;
+	if(lua_gettop(L)!=1) error("get_card_groupid: expected 1 args, got %d.\n",lua_gettop(L));
+	if(!lua_isnumber(L,1)) error("get_card_groupid: arg 1 must be int, found %s.\n",lua_tostring(L,1));
+	i=strtol(lua_tostring(L,1),0,10);
+	if(i<0 || i>=cards) error("get_card_groupid: found %d, should be between 0 and %d.\n",i,cards-1);
+	lua_pushnumber(L,card[i].groupid);
+	return 1;
+}
 
 /* set group[i].taken */
-/* TODO maybe not */
+/* TODO not used so far */
 static int L_set_group_taken(lua_State *L) {
 	int i,j;
 	if(lua_gettop(L)!=2) error("set_group_taken: expected 2 args, got %d.\n",lua_gettop(L));
@@ -202,6 +323,19 @@ static int L_set_group_taken(lua_State *L) {
 	return 0;
 }
 
+/* get pile[i].card[j] */
+static int L_get_pile_card(lua_State *L) {
+	int i,j;
+	if(lua_gettop(L)!=2) error("get_pile_cards: expected 2 args, got %d.\n",lua_gettop(L));
+	if(!lua_isnumber(L,1)) error("get_pile_cards: arg 1 must be int, found %s.\n",lua_tostring(L,1));
+	if(!lua_isnumber(L,2)) error("get_pile_cards: arg 2 must be int, found %s.\n",lua_tostring(L,2));
+	i=strtol(lua_tostring(L,1),0,10);
+	j=strtol(lua_tostring(L,2),0,10);
+	if(i<0 || i>=piles) error("get_pile_cards: illegal pile number %d.\n",i);
+	if(j<0 || j>=pile[i].cards) error("get_pile_cards: illegal card number %d in pile %d.\n",j,i);
+	lua_pushnumber(L,pile[i].card[j]);
+	return 1;
+}
 
 /* set pile[i].card[j] */
 static int L_set_pile_card(lua_State *L) {
@@ -234,6 +368,34 @@ static int L_set_pile_cards(lua_State *L) {
 	return 0;
 }
 
+/* set pile[i].bane */
+static int L_set_pile_bane(lua_State *L) {
+	int i,j;
+	if(lua_gettop(L)!=2) error("set_pile_bane: expected 2 args, got %d.\n",lua_gettop(L));
+	if(!lua_isnumber(L,1)) error("set_pile_bane: arg 1 must be int, found %s.\n",lua_tostring(L,1));
+	if(!lua_isnumber(L,2)) error("set_pile_bane: arg 2 must be int, found %s.\n",lua_tostring(L,2));
+	i=strtol(lua_tostring(L,1),0,10);
+	j=strtol(lua_tostring(L,2),0,10);
+	if(i<0 || i>=piles) error("set_pile_bane: illegal pile number %d.\n",i);
+	if(j<0 || j>1) error("set_pile_bane: second arg must be 0 or 1\n",j);
+	pile[i].bane=j;
+	return 0;
+}
+
+/* set pile[i].supply */
+static int L_set_pile_supply(lua_State *L) {
+	int i,j;
+	if(lua_gettop(L)!=2) error("set_pile_supply: expected 2 args, got %d.\n",lua_gettop(L));
+	if(!lua_isnumber(L,1)) error("set_pile_supply: arg 1 must be int, found %s.\n",lua_tostring(L,1));
+	if(!lua_isnumber(L,2)) error("set_pile_supply: arg 2 must be int, found %s.\n",lua_tostring(L,2));
+	i=strtol(lua_tostring(L,1),0,10);
+	j=strtol(lua_tostring(L,2),0,10);
+	if(i<0 || i>=piles) error("set_pile_supply: illegal pile number %d.\n",i);
+	if(j<0 || j>1) error("set_pile_supply: second arg must be 0 or 1\n",j);
+	pile[i].supply=j;
+	return 0;
+}
+
 /* set piles */
 static int L_set_piles(lua_State *L) {
 	int i;
@@ -249,6 +411,49 @@ static int L_set_piles(lua_State *L) {
 static int L_get_piles(lua_State *L) {
 	if(lua_gettop(L)!=0) error("get_piles: expected 0 args, got %d.\n",lua_gettop(L));
 	lua_pushnumber(L,piles);
+	return 1;
+}
+
+/* get group[i].card[j] */
+static int L_get_group_card(lua_State *L) {
+	int i,j;
+	if(lua_gettop(L)!=2) error("get_group_card: expected 2 args, got %d.\n",lua_gettop(L));
+	if(!lua_isnumber(L,1)) error("get_group_card: arg 1 must be int, found %s.\n",lua_tostring(L,1));
+	if(!lua_isnumber(L,2)) error("get_group_card: arg 2 must be int, found %s.\n",lua_tostring(L,2));
+	i=strtol(lua_tostring(L,1),0,10);
+	j=strtol(lua_tostring(L,2),0,10);
+	if(i<0 || i>=groups) error("get_group_card: illegal pile number %d.\n",i);
+	if(j<0 || j>=group[i].cards) error("get_group_card: index out of range.\n",j);
+	lua_pushnumber(L,group[i].card[j]);
+	return 1;
+}
+
+/* get group[i].taken */
+static int L_get_group_taken(lua_State *L) {
+	int i;
+	if(lua_gettop(L)!=1) error("get_group_taken: expected 1 args, got %d.\n",lua_gettop(L));
+	if(!lua_isnumber(L,1)) error("get_group_taken: arg 1 must be int, found %s.\n",lua_tostring(L,1));
+	i=strtol(lua_tostring(L,1),0,10);
+	if(i<0 || i>=groups) error("get_group_taken: found %d, should be between 0 and %d.\n",i,groups-1);
+	lua_pushnumber(L,group[i].taken);
+	return 1;
+}
+
+/* get group[i].iskingdom */
+static int L_get_group_iskingdom(lua_State *L) {
+	int i;
+	if(lua_gettop(L)!=1) error("get_group_iskingdom: expected 1 args, got %d.\n",lua_gettop(L));
+	if(!lua_isnumber(L,1)) error("get_group_iskingdom: arg 1 must be int, found %s.\n",lua_tostring(L,1));
+	i=strtol(lua_tostring(L,1),0,10);
+	if(i<0 || i>=groups) error("get_group_iskingdom: found %d, should be between 0 and %d.\n",i,groups-1);
+	lua_pushnumber(L,group[i].iskingdom);
+	return 1;
+}
+
+/* get piles */
+static int L_get_groups(lua_State *L) {
+	if(lua_gettop(L)!=0) error("get_groups: expected 0 args, got %d.\n",lua_gettop(L));
+	lua_pushnumber(L,groups);
 	return 1;
 }
 
@@ -298,6 +503,16 @@ static int L_add_buy(lua_State *L) {
 	return 0;
 }
 
+/* add pile to game (groupid) */
+static int L_add_pile(lua_State *L) {
+	int i;
+	if(lua_gettop(L)!=1) error("add_pile: expected 1 arg, got %d.\n",lua_gettop(L));
+	if(!lua_isnumber(L,1)) error("add_pile: arg 1 must be int, found %s.\n",lua_tostring(L,1));
+	i=strtol(lua_tostring(L,1),0,10);
+	addpiletogame(i);
+	return 0;
+}
+
 /* init etc *****************************************************************/
 
 static void setcardproperty(int id,char *s) {
@@ -315,7 +530,8 @@ static void setcardproperty(int id,char *s) {
 	else error("setcardproperty: unknown type %s.\n",s);
 }
 
-static int getgroupid(char *s) {
+/* special routine for finding group id, and creating it if it doesn't exist */
+static int getgroupidcreate(char *s) {
 	int i;
 	for(i=0;i<groups;i++) if(!strcmp(s,group[i].name)) return i;
 	strncpy(group[groups].name,s,MAXSMALLS-1);
@@ -343,7 +559,7 @@ static void parsecardtxt(int id,char *filename) {
 			}
 		} else if(!strcmp(s,"group")) {
 			if(fscanf(f,scans,v)!=1) error("parsecardtxt: unexpected end of file in %s reading property %s.\n",filename,s);
-			gid=getgroupid(v);
+			gid=getgroupidcreate(v);
 			card[id].groupid=gid;
 			group[gid].card[group[gid].cards++]=id;
 			foundgroup=1;
@@ -365,7 +581,7 @@ static void parsecardtxt(int id,char *filename) {
 	if(fclose(f)) error("parsecardtxt: couldn't close file %s after reading.\n",filename);
 	/* no group property found: set equal to filename or something */
 	if(!foundgroup) {
-		gid=getgroupid(filename);
+		gid=getgroupidcreate(filename);
 		card[id].groupid=gid;
 		group[gid].card[group[gid].cards++]=id;
 	}
@@ -392,16 +608,27 @@ void initcard() {
 			/* lua stuff */
 			if(!(card[id].lua=luaL_newstate())) error("initcard: luaL_newstate failed.\n");
 			luaL_openlibs(card[id].lua);
+			lua_register(card[id].lua,"get_card_money_cost",L_get_card_money_cost);
+			lua_register(card[id].lua,"get_card_potion_cost",L_get_card_potion_cost);
+			lua_register(card[id].lua,"get_card_groupid",L_get_card_groupid);
+			lua_register(card[id].lua,"get_pile_card",L_get_pile_card);
 			lua_register(card[id].lua,"set_pile_card",L_set_pile_card);
 			lua_register(card[id].lua,"set_pile_cards",L_set_pile_cards);
+			lua_register(card[id].lua,"set_pile_bane",L_set_pile_bane);
+			lua_register(card[id].lua,"set_pile_supply",L_set_pile_supply);
 			lua_register(card[id].lua,"set_piles",L_set_piles);
 			lua_register(card[id].lua,"get_piles",L_get_piles);
+			lua_register(card[id].lua,"get_group_card",L_get_group_card);
+			lua_register(card[id].lua,"get_group_taken",L_get_group_taken);
+			lua_register(card[id].lua,"get_group_iskingdom",L_get_group_iskingdom);
+			lua_register(card[id].lua,"get_groups",L_get_groups);
 			lua_register(card[id].lua,"get_players",L_get_players);
 			lua_register(card[id].lua,"add_card",L_add_card);
 			lua_register(card[id].lua,"add_action",L_add_action);
 			lua_register(card[id].lua,"add_money",L_add_money);
 			lua_register(card[id].lua,"add_buy",L_add_buy);
 			lua_register(card[id].lua,"add_potion",L_add_potion);
+			lua_register(card[id].lua,"add_pile",L_add_pile);
 		}
 		getextension(dir.s,s,MAXSMALLS);
 		/* process files by extension, some contain info */
@@ -527,49 +754,6 @@ static void playgame() {
 	dumpgroups();
 	dumppiles();
 	puts("whee game over");
-}
-
-static void addpiletogame(int id) {
-	lua_getglobal(card[id].lua,"on_setup");
-	if(lua_pcall(card[id].lua,0,0,0)) error("addpiletogame: %s\n",lua_tostring(card[id].lua,-1));
-}
-
-static void addpiletogamebyname(char *s) {
-	int id=getcardid(s);
-	if(id<0) error("generatenewgame: no %s.\n",s);
-	addpiletogame(id);
-}
-
-#define KINGDOM 10
-/* picks 10 kingdom cards and deals out cards to all players */
-static void generatenewgame() {
-	int i,j,id;
-	for(i=0;i<groups;i++) group[i].taken=0;
-	piles=0;
-	/* always add copper, silver, gold, estate, duchy, province, curse */
-	addpiletogamebyname("copper");
-	addpiletogamebyname("silver");
-	addpiletogamebyname("gold");
-	addpiletogamebyname("estate");
-	addpiletogamebyname("duchy");
-	addpiletogamebyname("province");
-	addpiletogamebyname("curse");
-	for(i=0;i<KINGDOM;i++) {
-		do j=rand()%groups; while(group[j].taken || !group[j].iskingdom);
-		/* TODO add pile to game */
-		printf("kingdom card %d: %s\n",j+1,group[j].name);
-		group[j].taken=1;
-		addpiletogame(j);
-	}
-	/* post-process setup! for special cases like young witch */
-	for(i=0;i<piles;i++) {
-		if(!pile[i].cards) error("generatenewgame: found empty pile.\n");
-		id=pile[i].card[0];
-		if(card[id].iskingdom) {
-			lua_getglobal(card[id].lua,"post_setup");
-			if(lua_pcall(card[id].lua,0,0,0)) error("generatenewgame: %s\n",lua_tostring(card[id].lua,-1));
-		}
-	}
 }
 
 void testplay() {

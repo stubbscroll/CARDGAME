@@ -1,2 +1,3 @@
 type curse
 name "Curse"
+group curse
