@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <ctype.h>
 #include <time.h>
 #include "card.h"
@@ -92,6 +93,7 @@ static void dumppiles() {
 	printf("%d piles\n",piles);
 	for(i=0;i<piles;i++) {
 		printf("[%d",pile[i].cards);
+		if(pile[i].flag[0]&1) printf(" (bane)");
 		for(j=0;j<pile[i].cards;j++) printf(" %s",card[pile[i].card[j]].shortname);
 		printf("]\n");
 	}
@@ -193,6 +195,16 @@ static void movecard(int ix,int *from,int *lenf,int *to,int *lent) {
 /* move all cards from pile from to pile to */
 static void movepile(int *from,int *lenf,int *to,int *lent) {
 	/* todo */
+}
+
+/* pile management **********************************************************/
+
+static void initpile(int pid) {
+	int i;
+	pile[pid].cards=0;
+	pile[pid].supply=0;
+	for(i=0;i<(MAXFLAG+31)/32;i++) pile[pid].flag[i]=0;
+	for(i=0;i<MAXVAR;i++) pile[pid].var[i]=0;
 }
 
 /* new game setup management ************************************************/
@@ -323,6 +335,17 @@ static int L_set_group_taken(lua_State *L) {
 	return 0;
 }
 
+/* set all fields in pile to zero */
+static int L_init_pile(lua_State *L) {
+	int i;
+	if(lua_gettop(L)!=1) error("init_pile: expected 1 args, got %d.\n",lua_gettop(L));
+	if(!lua_isnumber(L,1)) error("init_pile: arg 1 must be int, found %s.\n",lua_tostring(L,1));
+	i=strtol(lua_tostring(L,1),0,10);
+	if(i<0 || i>=piles) error("init_pile: index %d out of bounds.\n",i);
+	initpile(i);
+	return 0;
+}
+
 /* get pile[i].card[j] */
 static int L_get_pile_card(lua_State *L) {
 	int i,j;
@@ -368,17 +391,21 @@ static int L_set_pile_cards(lua_State *L) {
 	return 0;
 }
 
-/* set pile[i].bane */
-static int L_set_pile_bane(lua_State *L) {
-	int i,j;
-	if(lua_gettop(L)!=2) error("set_pile_bane: expected 2 args, got %d.\n",lua_gettop(L));
+/* set pile[i].flsg[j] */
+static int L_set_pile_flag(lua_State *L) {
+	int i,j,k,mask;
+	if(lua_gettop(L)!=3) error("set_pile_bane: expected 3 args, got %d.\n",lua_gettop(L));
 	if(!lua_isnumber(L,1)) error("set_pile_bane: arg 1 must be int, found %s.\n",lua_tostring(L,1));
 	if(!lua_isnumber(L,2)) error("set_pile_bane: arg 2 must be int, found %s.\n",lua_tostring(L,2));
+	if(!lua_isnumber(L,3)) error("set_pile_bane: arg 3 must be int, found %s.\n",lua_tostring(L,2));
 	i=strtol(lua_tostring(L,1),0,10);
 	j=strtol(lua_tostring(L,2),0,10);
+	k=strtol(lua_tostring(L,3),0,10);
 	if(i<0 || i>=piles) error("set_pile_bane: illegal pile number %d.\n",i);
-	if(j<0 || j>1) error("set_pile_bane: second arg must be 0 or 1\n",j);
-	pile[i].bane=j;
+	if(j<0 || j>MAXFLAG) error("set_pile_bane: second arg out of bounds.\n",j);
+	if(k<0 || j>k) error("set_pile_bane: third arg must be 0 or 1\n",j);
+	mask=((uint32_t)-1)-(((uint32_t)1)<<(j&31));
+	pile[i].flag[j]=(pile[i].flag[j]&mask)|(((uint32_t)1)<<(j&31));
 	return 0;
 }
 
@@ -611,10 +638,11 @@ void initcard() {
 			lua_register(card[id].lua,"get_card_money_cost",L_get_card_money_cost);
 			lua_register(card[id].lua,"get_card_potion_cost",L_get_card_potion_cost);
 			lua_register(card[id].lua,"get_card_groupid",L_get_card_groupid);
+			lua_register(card[id].lua,"init_pile",L_init_pile);
 			lua_register(card[id].lua,"get_pile_card",L_get_pile_card);
 			lua_register(card[id].lua,"set_pile_card",L_set_pile_card);
 			lua_register(card[id].lua,"set_pile_cards",L_set_pile_cards);
-			lua_register(card[id].lua,"set_pile_bane",L_set_pile_bane);
+			lua_register(card[id].lua,"set_pile_flag",L_set_pile_flag);
 			lua_register(card[id].lua,"set_pile_supply",L_set_pile_supply);
 			lua_register(card[id].lua,"set_piles",L_set_piles);
 			lua_register(card[id].lua,"get_piles",L_get_piles);

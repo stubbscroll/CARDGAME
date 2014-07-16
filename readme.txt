@@ -8,9 +8,9 @@ gigantic warning: i can't lua. proceed at your own risk.
 ==============================================================================
 TODO
 
-- for all cards, add set_pile_bane(pileid,0) somewhere in on_setup().
-- for all supply cards, add set_pile_supply(pileid,1) somewhere in on_setup().
-  for non-supply cards, add set_pile_supply(pileid,0).
+- for each card, in on_setup() add init_pile(pileid) after set_piles(),
+  and add set_pile_supply(pileid,?) and set ? to 1 if card is in the
+  supply.
 ==============================================================================
 open problems
 - the program crashes when i try to call a non-existing lua function. desired

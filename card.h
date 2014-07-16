@@ -1,6 +1,7 @@
 #ifndef CARD_H
 #define CARD_H
 
+#include <stdint.h>
 #include <lua.h>
 #include <lualib.h>
 #include <lauxlib.h>
@@ -74,11 +75,15 @@ struct player_t {
 	int buy;                /* number of buys */
 };
 
+#define MAXFLAG 100
+#define MAXVAR 50
+
 struct pile_t {
 	int card[MAXCARD];      /* the cards in this pile, highest index is top */
 	int cards;              /* number of cards in this pile */
-	char bane;              /* 1: pile contains bane cards for young witch */
 	char supply;            /* 1: pile is in the supply */
+	uint32_t flag[(MAXFLAG+31)/32]; /* general-purpose flags */
+	int var[MAXVAR];        /* general-purpose variables */
 	/* todo type:
 	   kingdom
 	   black market

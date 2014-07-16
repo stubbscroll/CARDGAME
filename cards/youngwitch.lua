@@ -20,9 +20,9 @@ function on_setup()
   cards=10
   pileid=get_piles()
   set_piles(pileid+1)
-  set_pile_cards(pileid,cards)
-  set_pile_bane(pileid,0)
+  init_pile(pileid)
   set_pile_supply(pileid,1)
+  set_pile_cards(pileid,cards)
   for i=0,cards-1,1 do
     set_pile_card(pileid,i,thiscardid)
   end
@@ -59,7 +59,7 @@ function post_setup()
   for i=0,n-1,1 do
     p=get_pile_card(i,0)
     if get_card_groupid(p)==baneid then
-    set_pile_bane(i,1)
+    set_pile_flag(i,0,1)
     end
   end
 end
