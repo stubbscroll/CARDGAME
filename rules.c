@@ -212,6 +212,7 @@ static void initpile(int pid) {
 /* add pile by group id! */
 static void addpiletogame(int gid) {
 	int id=group[gid].card[0];
+	group[gid].taken=1;
 	lua_getglobal(card[id].lua,"on_setup");
 	if(lua_pcall(card[id].lua,0,0,0)) error("addpiletogame: %s\n",lua_tostring(card[id].lua,-1));
 }
@@ -238,9 +239,6 @@ static void generatenewgame() {
 	addpiletogamebyname("curse");
 	for(i=0;i<KINGDOM;i++) {
 		do j=rand()%groups; while(group[j].taken || !group[j].iskingdom);
-		/* TODO add pile to game */
-		printf("kingdom card %d: %s\n",j+1,group[j].name);
-		group[j].taken=1;
 		addpiletogame(j);
 	}
 	/* post-process setup! for special cases like young witch */
@@ -693,6 +691,7 @@ void shutdowncard() {
 	for(i=0;i<cards;i++) lua_close(card[i].lua);
 }
 
+/****************************************************************************/
 /* everything below this point is extremely temporary placeholderish code to
    get very basic gameplay up */
 
@@ -704,6 +703,18 @@ static int countcardsmask(int mask) {
 	for(r=i=0;i<player[currentplayer].handn;i++)
 		if(card[player[currentplayer].hand[i]].type&mask) r++;
 	return r;
+}
+
+static void testprintnewgame() {
+	int i;
+	puts("new game! cards in supply:");
+	printf("kingdom cards:");
+	for(i=0;i<piles;i++) if(pile[i].supply && card[pile[i].card[0]].iskingdom && !(pile[i].flag[0]&1)) printf(" %s",card[pile[i].card[0]].shortname);
+	printf("\n");
+	for(i=0;i<piles;i++) if(pile[i].flag[0]&1) printf("bane: %s\n",card[pile[i].card[0]].shortname);
+	printf("other supply cards:");
+	for(i=0;i<piles;i++) if(pile[i].supply && !card[pile[i].card[0]].iskingdom) printf(" %s",card[pile[i].card[0]].shortname);
+	printf("\n");
 }
 
 static void actionphase() {
@@ -789,6 +800,7 @@ void testplay() {
 	players=2;
 	srand(time(0));
 	generatenewgame();
+	testprintnewgame();
 	for(i=0;i<players;i++) {
 		resetplayer(i);
 		c=getcardid("copper");

@@ -8,9 +8,7 @@ gigantic warning: i can't lua. proceed at your own risk.
 ==============================================================================
 TODO
 
-- for each card, in on_setup() add init_pile(pileid) after set_piles(pileid+1)
-  and add set_pile_supply(pileid,?) and let ?=1 if card is in supply and 0
-  otherwise.
+- finish the game
 ==============================================================================
 open problems
 
@@ -19,6 +17,13 @@ open problems
 - to add to the above: lua crashes pretty much any time an error occurs.
   consider following the steps here
   http://stackoverflow.com/questions/19903762/lua-5-2-compiled-with-mingw32-crashes-my-host-program-when-a-lua-error-occurs
+==============================================================================
+pitfalls that i'm probably not going to fix
+
+- in the unfortunate case that all kingdom cards with cost 2 or 3 are in the
+  supply and young witch is in the game, the setup for young witch will crash
+  since it can't find a bane card. just make sure there is no file setup with
+  fewer than 10 kingdom cards with cost 2 or 3.
 ==============================================================================
 actual documentation
 
