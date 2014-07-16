@@ -8,11 +8,12 @@ gigantic warning: i can't lua. proceed at your own risk.
 ==============================================================================
 TODO
 
-- for each card, in on_setup() add init_pile(pileid) after set_piles(),
-  and add set_pile_supply(pileid,?) and set ? to 1 if card is in the
-  supply.
+- for each card, in on_setup() add init_pile(pileid) after set_piles(pileid+1)
+  and add set_pile_supply(pileid,?) and let ?=1 if card is in supply and 0
+  otherwise.
 ==============================================================================
 open problems
+
 - the program crashes when i try to call a non-existing lua function. desired
   behaviour: return with error message
 - to add to the above: lua crashes pretty much any time an error occurs.
