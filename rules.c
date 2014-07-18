@@ -31,6 +31,8 @@
    - strange trigging sequences, such as young witch draws black market as
      bane card which triggers black market setup
    - players buys young witch via black market which triggers bane setup
+   - scheme which has an effect long after playing (in clean-up). beware
+     throne room, king's court, procession.
    suggestions
    - have can_buy() in each card returning true/false
    - have get_money() in each treasure card returning value
@@ -285,12 +287,16 @@ static int potion_cost_L(int id) {
 /* all these functions are prefixed with L_, and they are called in lua scripts
    with the identifier without prefix */
 
+/* some macros to help keep functions shorter */
+#define CHECKARG(n) if(lua_gettop(L)!=n) error("%s: expected %d args, got %d.\n",__func__+2,n,lua_gettop(L))
+#define ISNUM(i) if(!lua_isnumber(L,i)) error("%s: arg %d must be int, found %s.\n",__func__+2,i,lua_tostring(L,i))
+#define TONUM(i) strtol(lua_tostring(L,i),0,10)
+
 /* given index, return cost of card in money */
 static int L_get_card_money_cost(lua_State *L) {
 	int id;
-	if(lua_gettop(L)!=1) error("get_card_money_cost: expected 1 args, got %d.\n",lua_gettop(L));
-	if(!lua_isnumber(L,1)) error("get_card_money_cost: arg 1 must be int, found %s.\n",lua_tostring(L,1));
-	id=strtol(lua_tostring(L,1),0,10);
+	CHECKARG(1); ISNUM(1);
+	id=TONUM(1);
 	if(id<0 || id>=cards) error("get_card_money_cost: illegal index %d.\n",id);
 	lua_pushnumber(L,money_cost_L(id));
 	return 1;
@@ -299,9 +305,8 @@ static int L_get_card_money_cost(lua_State *L) {
 /* given index, return cost of card in potions */
 static int L_get_card_potion_cost(lua_State *L) {
 	int id;
-	if(lua_gettop(L)!=1) error("get_card_potion_cost: expected 1 args, got %d.\n",lua_gettop(L));
-	if(!lua_isnumber(L,1)) error("get_card_potion_cost: arg 1 must be int, found %s.\n",lua_tostring(L,1));
-	id=strtol(lua_tostring(L,1),0,10);
+	CHECKARG(1); ISNUM(1);
+	id=TONUM(1);
 	if(id<0 || id>=cards) error("get_card_potion_cost: illegal index %d.\n",id);
 	lua_pushnumber(L,potion_cost_L(id));
 	return 1;
@@ -310,9 +315,8 @@ static int L_get_card_potion_cost(lua_State *L) {
 /* get card[i].groupid */
 static int L_get_card_groupid(lua_State *L) {
 	int i;
-	if(lua_gettop(L)!=1) error("get_card_groupid: expected 1 args, got %d.\n",lua_gettop(L));
-	if(!lua_isnumber(L,1)) error("get_card_groupid: arg 1 must be int, found %s.\n",lua_tostring(L,1));
-	i=strtol(lua_tostring(L,1),0,10);
+	CHECKARG(1); ISNUM(1);
+	i=TONUM(1);
 	if(i<0 || i>=cards) error("get_card_groupid: found %d, should be between 0 and %d.\n",i,cards-1);
 	lua_pushnumber(L,card[i].groupid);
 	return 1;
@@ -322,11 +326,8 @@ static int L_get_card_groupid(lua_State *L) {
 /* TODO not used so far */
 static int L_set_group_taken(lua_State *L) {
 	int i,j;
-	if(lua_gettop(L)!=2) error("set_group_taken: expected 2 args, got %d.\n",lua_gettop(L));
-	if(!lua_isnumber(L,1)) error("set_group_taken: arg 1 must be int, found %s.\n",lua_tostring(L,1));
-	if(!lua_isnumber(L,2)) error("set_group_taken: arg 2 must be int, found %s.\n",lua_tostring(L,2));
-	i=strtol(lua_tostring(L,1),0,10);
-	j=strtol(lua_tostring(L,2),0,10);
+	CHECKARG(2); ISNUM(1); ISNUM(2);
+	i=TONUM(1); j=TONUM(2);
 	if(i<0 || i>=groups) error("set_group_taken: illegal group number %d.\n",i);
 	if(j<0 || j>1) error("set_group_taken: value must be 0 or 1, found %d.\n",j);
 	group[i].taken=j;
@@ -336,9 +337,8 @@ static int L_set_group_taken(lua_State *L) {
 /* set all fields in pile to zero */
 static int L_init_pile(lua_State *L) {
 	int i;
-	if(lua_gettop(L)!=1) error("init_pile: expected 1 args, got %d.\n",lua_gettop(L));
-	if(!lua_isnumber(L,1)) error("init_pile: arg 1 must be int, found %s.\n",lua_tostring(L,1));
-	i=strtol(lua_tostring(L,1),0,10);
+	CHECKARG(1); ISNUM(1);
+	i=TONUM(1);
 	if(i<0 || i>=piles) error("init_pile: index %d out of bounds.\n",i);
 	initpile(i);
 	return 0;
@@ -347,11 +347,8 @@ static int L_init_pile(lua_State *L) {
 /* get pile[i].card[j] */
 static int L_get_pile_card(lua_State *L) {
 	int i,j;
-	if(lua_gettop(L)!=2) error("get_pile_cards: expected 2 args, got %d.\n",lua_gettop(L));
-	if(!lua_isnumber(L,1)) error("get_pile_cards: arg 1 must be int, found %s.\n",lua_tostring(L,1));
-	if(!lua_isnumber(L,2)) error("get_pile_cards: arg 2 must be int, found %s.\n",lua_tostring(L,2));
-	i=strtol(lua_tostring(L,1),0,10);
-	j=strtol(lua_tostring(L,2),0,10);
+	CHECKARG(2); ISNUM(1); ISNUM(2);
+	i=TONUM(1); j=TONUM(2);
 	if(i<0 || i>=piles) error("get_pile_cards: illegal pile number %d.\n",i);
 	if(j<0 || j>=pile[i].cards) error("get_pile_cards: illegal card number %d in pile %d.\n",j,i);
 	lua_pushnumber(L,pile[i].card[j]);
@@ -361,14 +358,9 @@ static int L_get_pile_card(lua_State *L) {
 /* set pile[i].card[j] */
 static int L_set_pile_card(lua_State *L) {
 	int i,j,k;
-	if(lua_gettop(L)!=3) error("set_pile_cards: expected 3 args, got %d.\n",lua_gettop(L));
-	if(!lua_isnumber(L,1)) error("set_pile_cards: arg 1 must be int, found %s.\n",lua_tostring(L,1));
-	if(!lua_isnumber(L,2)) error("set_pile_cards: arg 2 must be int, found %s.\n",lua_tostring(L,2));
-	if(!lua_isnumber(L,3)) error("set_pile_cards: arg 3 must be int, found %s.\n",lua_tostring(L,3));
-	i=strtol(lua_tostring(L,1),0,10);
-	j=strtol(lua_tostring(L,2),0,10);
-	k=strtol(lua_tostring(L,3),0,10);
-	if(i<0 || i>=piles) error("set_pile_cards: illegal pile number %d.\n",i);
+	CHECKARG(3); ISNUM(1); ISNUM(2); ISNUM(3);
+	i=TONUM(1); j=TONUM(2); k=TONUM(3);
+	if(i<0 || i>=piles) error("%s: illegal pile number %d.\n",__func__+2,i);
 	if(j<0 || j>=pile[i].cards) error("set_pile_cards: illegal card number %d in pile %d.\n",j,i);
 	if(k<0 || k>=cards) error("set_pile_cards: illegal card id %d.\n",k);
 	pile[i].card[j]=k;
@@ -378,11 +370,8 @@ static int L_set_pile_card(lua_State *L) {
 /* set pile[i].cards */
 static int L_set_pile_cards(lua_State *L) {
 	int i,j;
-	if(lua_gettop(L)!=2) error("set_pile_cards: expected 2 args, got %d.\n",lua_gettop(L));
-	if(!lua_isnumber(L,1)) error("set_pile_cards: arg 1 must be int, found %s.\n",lua_tostring(L,1));
-	if(!lua_isnumber(L,2)) error("set_pile_cards: arg 2 must be int, found %s.\n",lua_tostring(L,2));
-	i=strtol(lua_tostring(L,1),0,10);
-	j=strtol(lua_tostring(L,2),0,10);
+	CHECKARG(2); ISNUM(1); ISNUM(2);
+	i=TONUM(1); j=TONUM(2);
 	if(i<0 || i>=piles) error("set_pile_cards: illegal pile number %d.\n",i);
 	if(j<0) error("set_pile_cards: cards must be nonnegative, found %d.\n",j);
 	pile[i].cards=j;
@@ -392,13 +381,8 @@ static int L_set_pile_cards(lua_State *L) {
 /* set pile[i].flsg[j] */
 static int L_set_pile_flag(lua_State *L) {
 	int i,j,k,mask;
-	if(lua_gettop(L)!=3) error("set_pile_bane: expected 3 args, got %d.\n",lua_gettop(L));
-	if(!lua_isnumber(L,1)) error("set_pile_bane: arg 1 must be int, found %s.\n",lua_tostring(L,1));
-	if(!lua_isnumber(L,2)) error("set_pile_bane: arg 2 must be int, found %s.\n",lua_tostring(L,2));
-	if(!lua_isnumber(L,3)) error("set_pile_bane: arg 3 must be int, found %s.\n",lua_tostring(L,2));
-	i=strtol(lua_tostring(L,1),0,10);
-	j=strtol(lua_tostring(L,2),0,10);
-	k=strtol(lua_tostring(L,3),0,10);
+	CHECKARG(3); ISNUM(1); ISNUM(2); ISNUM(3);
+	i=TONUM(1); j=TONUM(2); k=TONUM(3);
 	if(i<0 || i>=piles) error("set_pile_bane: illegal pile number %d.\n",i);
 	if(j<0 || j>MAXFLAG) error("set_pile_bane: second arg out of bounds.\n",j);
 	if(k<0 || j>k) error("set_pile_bane: third arg must be 0 or 1\n",j);
@@ -410,11 +394,8 @@ static int L_set_pile_flag(lua_State *L) {
 /* set pile[i].supply */
 static int L_set_pile_supply(lua_State *L) {
 	int i,j;
-	if(lua_gettop(L)!=2) error("set_pile_supply: expected 2 args, got %d.\n",lua_gettop(L));
-	if(!lua_isnumber(L,1)) error("set_pile_supply: arg 1 must be int, found %s.\n",lua_tostring(L,1));
-	if(!lua_isnumber(L,2)) error("set_pile_supply: arg 2 must be int, found %s.\n",lua_tostring(L,2));
-	i=strtol(lua_tostring(L,1),0,10);
-	j=strtol(lua_tostring(L,2),0,10);
+	CHECKARG(2); ISNUM(1); ISNUM(2);
+	i=TONUM(1); j=TONUM(2);
 	if(i<0 || i>=piles) error("set_pile_supply: illegal pile number %d.\n",i);
 	if(j<0 || j>1) error("set_pile_supply: second arg must be 0 or 1\n",j);
 	pile[i].supply=j;
@@ -424,9 +405,8 @@ static int L_set_pile_supply(lua_State *L) {
 /* set piles */
 static int L_set_piles(lua_State *L) {
 	int i;
-	if(lua_gettop(L)!=1) error("get_piles: expected 1 args, got %d.\n",lua_gettop(L));
-	if(!lua_isnumber(L,1)) error("set_piles: arg 1 must be int, found %s.\n",lua_tostring(L,1));
-	i=strtol(lua_tostring(L,1),0,10);
+	CHECKARG(1); ISNUM(1);
+	i=TONUM(1);
 	if(i<0) error("set_piles: found %d, should be nonnegative.\n",i);
 	piles=i;
 	return 0;
@@ -434,7 +414,7 @@ static int L_set_piles(lua_State *L) {
 
 /* get piles */
 static int L_get_piles(lua_State *L) {
-	if(lua_gettop(L)!=0) error("get_piles: expected 0 args, got %d.\n",lua_gettop(L));
+	CHECKARG(0);
 	lua_pushnumber(L,piles);
 	return 1;
 }
@@ -442,11 +422,8 @@ static int L_get_piles(lua_State *L) {
 /* get group[i].card[j] */
 static int L_get_group_card(lua_State *L) {
 	int i,j;
-	if(lua_gettop(L)!=2) error("get_group_card: expected 2 args, got %d.\n",lua_gettop(L));
-	if(!lua_isnumber(L,1)) error("get_group_card: arg 1 must be int, found %s.\n",lua_tostring(L,1));
-	if(!lua_isnumber(L,2)) error("get_group_card: arg 2 must be int, found %s.\n",lua_tostring(L,2));
-	i=strtol(lua_tostring(L,1),0,10);
-	j=strtol(lua_tostring(L,2),0,10);
+	CHECKARG(2); ISNUM(1); ISNUM(2);
+	i=TONUM(1); j=TONUM(2);
 	if(i<0 || i>=groups) error("get_group_card: illegal pile number %d.\n",i);
 	if(j<0 || j>=group[i].cards) error("get_group_card: index out of range.\n",j);
 	lua_pushnumber(L,group[i].card[j]);
@@ -456,9 +433,8 @@ static int L_get_group_card(lua_State *L) {
 /* get group[i].taken */
 static int L_get_group_taken(lua_State *L) {
 	int i;
-	if(lua_gettop(L)!=1) error("get_group_taken: expected 1 args, got %d.\n",lua_gettop(L));
-	if(!lua_isnumber(L,1)) error("get_group_taken: arg 1 must be int, found %s.\n",lua_tostring(L,1));
-	i=strtol(lua_tostring(L,1),0,10);
+	CHECKARG(1); ISNUM(1);
+	i=TONUM(1);
 	if(i<0 || i>=groups) error("get_group_taken: found %d, should be between 0 and %d.\n",i,groups-1);
 	lua_pushnumber(L,group[i].taken);
 	return 1;
@@ -467,9 +443,8 @@ static int L_get_group_taken(lua_State *L) {
 /* get group[i].iskingdom */
 static int L_get_group_iskingdom(lua_State *L) {
 	int i;
-	if(lua_gettop(L)!=1) error("get_group_iskingdom: expected 1 args, got %d.\n",lua_gettop(L));
-	if(!lua_isnumber(L,1)) error("get_group_iskingdom: arg 1 must be int, found %s.\n",lua_tostring(L,1));
-	i=strtol(lua_tostring(L,1),0,10);
+	CHECKARG(1); ISNUM(1);
+	i=TONUM(1);
 	if(i<0 || i>=groups) error("get_group_iskingdom: found %d, should be between 0 and %d.\n",i,groups-1);
 	lua_pushnumber(L,group[i].iskingdom);
 	return 1;
@@ -477,64 +452,61 @@ static int L_get_group_iskingdom(lua_State *L) {
 
 /* get piles */
 static int L_get_groups(lua_State *L) {
-	if(lua_gettop(L)!=0) error("get_groups: expected 0 args, got %d.\n",lua_gettop(L));
+	CHECKARG(0);
 	lua_pushnumber(L,groups);
 	return 1;
 }
 
 /* get players */
 static int L_get_players(lua_State *L) {
-	if(lua_gettop(L)!=0) error("get_players: expected 0 args, got %d.\n",lua_gettop(L));
+	CHECKARG(0);
 	lua_pushnumber(L,players);
 	return 1;
 }
 
 /* give current player cards */
 static int L_add_card(lua_State *L) {
-	if(lua_gettop(L)!=1) error("add_card: expected 1 arg, got %d.\n",lua_gettop(L));
+	CHECKARG(1); ISNUM(1);
 	/* todo draw cards */
 	return 0;
 }
 
 /* give current player more actions */
 static int L_add_action(lua_State *L) {
-	if(lua_gettop(L)!=1) error("add_card: expected 1 arg, got %d.\n",lua_gettop(L));
+	CHECKARG(1); ISNUM(1);
 	/* give more actions to current player */
-	player[currentplayer].action+=strtol(lua_tostring(L,1),0,10);
+	player[currentplayer].action+=TONUM(1);
 	return 0;
 }
 
 /* give current player more money */
 static int L_add_money(lua_State *L) {
-	if(lua_gettop(L)!=1) error("add_card: expected 1 arg, got %d.\n",lua_gettop(L));
+	CHECKARG(1); ISNUM(1);
 	/* give more money to current player */
-	player[currentplayer].money+=strtol(lua_tostring(L,1),0,10);
+	player[currentplayer].money+=TONUM(1);
 	return 0;
 }
 
 /* give current player more potions */
 static int L_add_potion(lua_State *L) {
-	if(lua_gettop(L)!=1) error("add_card: expected 1 arg, got %d.\n",lua_gettop(L));
+	CHECKARG(1); ISNUM(1);
 	/* give more potion to current player */
-	player[currentplayer].potion+=strtol(lua_tostring(L,1),0,10);
+	player[currentplayer].potion+=TONUM(1);
 	return 0;
 }
 
 /* give current player more buys */
 static int L_add_buy(lua_State *L) {
-	if(lua_gettop(L)!=1) error("add_card: expected 1 arg, got %d.\n",lua_gettop(L));
+	CHECKARG(1); ISNUM(1);
 	/* give more buys to current player */
-	player[currentplayer].buy+=strtol(lua_tostring(L,1),0,10);
+	player[currentplayer].buy+=TONUM(1);
 	return 0;
 }
 
 /* add pile to game (groupid) */
 static int L_add_pile(lua_State *L) {
-	int i;
-	if(lua_gettop(L)!=1) error("add_pile: expected 1 arg, got %d.\n",lua_gettop(L));
-	if(!lua_isnumber(L,1)) error("add_pile: arg 1 must be int, found %s.\n",lua_tostring(L,1));
-	i=strtol(lua_tostring(L,1),0,10);
-	addpiletogame(i);
+	CHECKARG(1); ISNUM(1);
+	addpiletogame(TONUM(1));
 	return 0;
 }
 
@@ -767,6 +739,7 @@ static void buyphase() {
 			}
 		}
 	}
+	/* TODO buy in buy phase */
 }
 
 static void playgame() {
