@@ -123,7 +123,7 @@ static int getcardid(char *s) {
 /* move discard to deck */
 static void discardtodeck(int ix) {
 	int i;
-	if(player[ix].deckn) error("discardtodraw: deck isn't empty.\n");
+	if(player[ix].deckn) error("%s: deck isn't empty.\n",__func__);
 	for(i=0;i<player[ix].discardn;i++) player[ix].deck[i]=player[ix].discard[i];
 	player[ix].deckn=player[ix].discardn;
 	player[ix].discardn=0;
@@ -187,6 +187,8 @@ static void playcard(int id) {
 	if(lua_pcall(card[id].lua,0,0,0)) error("playcard: error calling 'on_play': %s\n",lua_tostring(card[id].lua,-1));
 }
 
+/* pile management **********************************************************/
+
 /* move card at from[ix] to to and make from compact */
 static void movecard(int ix,int *from,int *lenf,int *to,int *lent) {
 	to[(*lent)++]=from[ix];
@@ -196,10 +198,10 @@ static void movecard(int ix,int *from,int *lenf,int *to,int *lent) {
 
 /* move all cards from pile from to pile to */
 static void movepile(int *from,int *lenf,int *to,int *lent) {
-	/* todo */
+	if(!*lenf) error("%s: attempting to move from empty pile.\n",__func__);
+	if(*lent==MAXCARD) error("%s: attempting to move to full pile.\n",__func__);
+	to[(*lent)++]=from[--(*lenf)];
 }
-
-/* pile management **********************************************************/
 
 static void initpile(int pid) {
 	int i;
@@ -209,6 +211,12 @@ static void initpile(int pid) {
 	for(i=0;i<MAXVAR;i++) pile[pid].var[i]=0;
 }
 
+/* player plr gains card from supply pile with id pid */
+/* convenience function that calls the general movepile() */
+static void gaincardfromsupply(int pid,int plr) {
+	movepile(pile[pid].card,&pile[pid].cards,player[plr].discard,&player[plr].discardn);
+}
+
 /* new game setup management ************************************************/
 
 /* add pile by group id! */
@@ -216,12 +224,12 @@ static void addpiletogame(int gid) {
 	int id=group[gid].card[0];
 	group[gid].taken=1;
 	lua_getglobal(card[id].lua,"on_setup");
-	if(lua_pcall(card[id].lua,0,0,0)) error("addpiletogame: %s\n",lua_tostring(card[id].lua,-1));
+	if(lua_pcall(card[id].lua,0,0,0)) error("%s: %s\n",__func__,lua_tostring(card[id].lua,-1));
 }
 
 static void addpiletogamebyname(char *s) {
 	int id=getgroupid(s);
-	if(id<0) error("generatenewgame: no %s.\n",s);
+	if(id<0) error("%s: no %s.\n",__func__,s);
 	addpiletogame(id);
 }
 
@@ -245,11 +253,11 @@ static void generatenewgame() {
 	}
 	/* post-process setup! for special cases like young witch */
 	for(i=0;i<piles;i++) {
-		if(!pile[i].cards) error("generatenewgame: found empty pile.\n");
+		if(!pile[i].cards) error("%s: found empty pile.\n",__func__);
 		id=pile[i].card[0];
 		if(card[id].iskingdom) {
 			lua_getglobal(card[id].lua,"post_setup");
-			if(lua_pcall(card[id].lua,0,0,0)) error("generatenewgame: %s\n",lua_tostring(card[id].lua,-1));
+			if(lua_pcall(card[id].lua,0,0,0)) error("%s: %s\n",__func__,lua_tostring(card[id].lua,-1));
 		}
 	}
 }
@@ -281,7 +289,6 @@ static int potion_cost_L(int id) {
 	lua_pop(card[id].lua,1);
 	return v;
 }
-
 
 /* functions that are callable from lua scripts *****************************/
 /* all these functions are prefixed with L_, and they are called in lua scripts
@@ -715,8 +722,35 @@ static void actionphase() {
 	}
 }
 
+/* let user choose card to gain. return id of chosen pile, or -1 if no
+   cards chosen */
+static int choosepiletogain(int plr,int min,int max,int pmin,int pmax) {
+	int i,map[MAXPILES],mapn,cost,id,pcost;
+	char s[10],c;
+	printf("press letter to gain a card, or 0 to not gain\n");
+	for(mapn=i=0;i<piles;i++) if(pile[i].supply && pile[i].cards) {
+		id=pile[i].card[pile[i].cards-1];
+		cost=money_cost_L(id);
+		pcost=potion_cost_L(id);
+		if(cost<min || cost>max) continue;
+		if(pcost<pmin || pcost>pmax) continue;
+		printf("%c. %s (cost %d)\n",mapn+'a',card[id].fullname,cost);
+		map[mapn++]=i;
+	}
+	while(1) {
+		scanf("%9s",s);
+		if(strlen(s)>1) goto illegal;
+		c=s[0];
+		if(c=='0') return -1;
+		if(c<'a' || c>=mapn+'a') goto illegal;
+		return map[c-'a'];
+	illegal:
+		puts("illegal input");
+	}
+}
+
 static void buyphase() {
-	int num,i,j;
+	int num,i,j,pid;
 	int list[MAXCARD];
 	char s[MAXSMALLS];
 	while((num=countcardsmask(TYPE_TREASURE))) {
@@ -739,7 +773,13 @@ static void buyphase() {
 			}
 		}
 	}
-	/* TODO buy in buy phase */
+	while(player[currentplayer].buy) {
+		printf("you have %d money and %d potions!\n",player[currentplayer].money,player[currentplayer].potion);
+		if((pid=choosepiletogain(currentplayer,0,player[currentplayer].money,0,player[currentplayer].potion))>-1) {
+			gaincardfromsupply(currentplayer,pid);
+			player[currentplayer].buy--;
+		} else break;
+	}
 }
 
 static void playgame() {
@@ -754,12 +794,12 @@ static void playgame() {
 		puts("action phase!");
 		actionphase();
 		puts("buy phase!");
-		buyphase();
-
 		printf("player has %d actions, %d money, %d buys, %d potions\n",cur->action,cur->money,cur->buy,cur->potion);
-		break;
-
+		buyphase();
+		/* toss hand into discard */
+		while(cur->handn) movepile(cur->hand,&cur->handn,cur->discard,&cur->discardn);
 		/* draw 5 new cards */
+		for(i=0;i<5;i++) drawcard(currentplayer);
 		currentplayer=(currentplayer+1)%players;
 	}
 	dumpcards();

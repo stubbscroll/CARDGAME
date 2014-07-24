@@ -28,6 +28,7 @@ void error(char *,...);
 #define TYPE_SHELTER 512
 #define TYPE_PRIZE 1024
 
+/* max number of different cards */
 #define MAXCARDS 1000
 
 /* one entry for each different card */
@@ -53,7 +54,8 @@ struct group_t {
 	   colony/platinum and ruins */
 };
 
-#define MAXCARD 300
+/* max number of cards in a pile, hand, deck or similar */
+#define MAXCARD 300 
 #define MAXPLAYER 10
 #define MAXPILES 25
 

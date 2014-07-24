@@ -8,15 +8,12 @@ gigantic warning: i can't lua. proceed at your own risk.
 ==============================================================================
 TODO
 
+- make a proper interface in rules.c that calls player agents (ui or ai)
 - finish the game
 ==============================================================================
 open problems
 
-- the program crashes when i try to call a non-existing lua function. desired
-  behaviour: return with error message
-- to add to the above: lua crashes pretty much any time an error occurs.
-  consider following the steps here
-  http://stackoverflow.com/questions/19903762/lua-5-2-compiled-with-mingw32-crashes-my-host-program-when-a-lua-error-occurs
+- none!
 ==============================================================================
 pitfalls that i'm probably not going to fix
 
