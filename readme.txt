@@ -6,7 +6,15 @@ the main goal is to dabble in lua rather than obtaining a given end product.
 
 gigantic warning: i can't lua. proceed at your own risk.
 ==============================================================================
-TODO
+SHORT-TERM TODO
+
+- implement can_buy or something like that to call from buyroutine (grand
+  market)
+- implement fancy cost function for peddler
+- check for game over: empty province (or empty colony) or 3 empty supply
+  piles
+==============================================================================
+LONG-TERM TODO
 
 - make a proper interface in rules.c that calls player agents (ui or ai)
 - finish the game
@@ -19,8 +27,9 @@ pitfalls that i'm probably not going to fix
 
 - in the unfortunate case that all kingdom cards with cost 2 or 3 are in the
   supply and young witch is in the game, the setup for young witch will crash
-  since it can't find a bane card. just make sure there is no file setup with
-  fewer than 10 kingdom cards with cost 2 or 3.
+  since it can't find a bane card. the lazy fix is to make sure there is no
+  file setup with fewer than 10 kingdom cards with cost 2 or 3, and the "ugly"
+  fix is to force a reshuffle or something.
 ==============================================================================
 actual documentation
 
@@ -77,4 +86,10 @@ returns the cost of the card in potions. to my knowledge, no cards so far
 have non-constant potion cost.
 
 more to be added.
-------------------------------------------------------------------------------
+==============================================================================
+examples of interesting scripts in cards
+
+not many so far, but:
+- youngwitch, post_setup()
+- grand market, can_buy()
+==============================================================================

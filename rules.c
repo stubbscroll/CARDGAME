@@ -283,9 +283,20 @@ static int money_cost_L(int id) {
 static int potion_cost_L(int id) {
 	int v;
 	lua_getglobal(card[id].lua,"potion_cost");
-	if(lua_pcall(card[id].lua,0,1,0)) error("get_card_money_cost: %s\n",lua_tostring(card[id].lua,-1));
-	if(!lua_isnumber(card[id].lua,-1)) error("get_card_money_cost: expected number, got %s.\n",lua_tostring(card[id].lua,-1));
+	if(lua_pcall(card[id].lua,0,1,0)) error("%s: %s\n",__func__,lua_tostring(card[id].lua,-1));
+	if(!lua_isnumber(card[id].lua,-1)) error("%s: expected number, got %s.\n",__func__,lua_tostring(card[id].lua,-1));
 	v=lua_tonumber(card[id].lua,-1);
+	lua_pop(card[id].lua,1);
+	return v;
+}
+
+static int can_buy_L(int id) {
+	int v;
+	lua_getglobal(card[id].lua,"can_buy");
+	if(lua_pcall(card[id].lua,0,1,0)) error("%s: %s\n",__func__,lua_tostring(card[id].lua,-1));
+	if(!lua_isnumber(card[id].lua,-1)) error("%s: expected number, got %s.\n",__func__,lua_tostring(card[id].lua,-1));
+	v=lua_tonumber(card[id].lua,-1);
+	if(v<0 || v>1) error("%s: should return 0 or 1, got %s.\n",__func__,v);
 	lua_pop(card[id].lua,1);
 	return v;
 }
@@ -314,8 +325,18 @@ static int L_get_card_potion_cost(lua_State *L) {
 	int id;
 	CHECKARG(1); ISNUM(1);
 	id=TONUM(1);
-	if(id<0 || id>=cards) error("get_card_potion_cost: illegal index %d.\n",id);
+	if(id<0 || id>=cards) error("%s: illegal index %d.\n",__func__+2,id);
 	lua_pushnumber(L,potion_cost_L(id));
+	return 1;
+}
+
+/* get card[i].fullname */
+static int L_get_card_fullname(lua_State *L) {
+	int i;
+	CHECKARG(1); ISNUM(1);
+	i=TONUM(1);
+	if(i<0 || i>=cards) error("%s: found %d, should be between 0 and %d.\n",__func__+2,i,cards-1);
+	lua_pushstring(L,card[i].fullname);
 	return 1;
 }
 
@@ -339,6 +360,31 @@ static int L_set_group_taken(lua_State *L) {
 	if(j<0 || j>1) error("set_group_taken: value must be 0 or 1, found %d.\n",j);
 	group[i].taken=j;
 	return 0;
+}
+
+static int L_get_player_playarea(lua_State *L) {
+	int i,j;
+	CHECKARG(2); ISNUM(1); ISNUM(2);
+	i=TONUM(1); j=TONUM(2);
+	if(i<0 || i>=players) error("%s: illegal player number %d.\n",__func__+2,i);
+	if(j<0 || j>player[i].playarean) error("%s: index %d out of bounds.\n",__func__+2,j);
+	lua_pushnumber(L,player[i].playarea[j]);
+	return 1;
+}
+
+static int L_get_player_playarean(lua_State *L) {
+	int i;
+	CHECKARG(1); ISNUM(1);
+	i=TONUM(1);
+	if(i<0 || i>=players) error("%s: illegal player number %d.\n",__func__+2,i);
+	lua_pushnumber(L,player[i].playarean);
+	return 1;
+}
+
+static int L_get_currentplayer(lua_State *L) {
+	CHECKARG(0);
+	lua_pushnumber(L,currentplayer);
+	return 1;
 }
 
 /* set all fields in pile to zero */
@@ -614,8 +660,12 @@ void initcard() {
 			luaL_openlibs(card[id].lua);
 			lua_register(card[id].lua,"get_card_money_cost",L_get_card_money_cost);
 			lua_register(card[id].lua,"get_card_potion_cost",L_get_card_potion_cost);
+			lua_register(card[id].lua,"get_card_fullname",L_get_card_fullname);
 			lua_register(card[id].lua,"get_card_groupid",L_get_card_groupid);
 			lua_register(card[id].lua,"init_pile",L_init_pile);
+			lua_register(card[id].lua,"get_player_playarea",L_get_player_playarea);
+			lua_register(card[id].lua,"get_player_playarean",L_get_player_playarean);
+			lua_register(card[id].lua,"get_currentplayer",L_get_currentplayer);
 			lua_register(card[id].lua,"get_pile_card",L_get_pile_card);
 			lua_register(card[id].lua,"set_pile_card",L_set_pile_card);
 			lua_register(card[id].lua,"set_pile_cards",L_set_pile_cards);
@@ -735,6 +785,8 @@ static int choosepiletogain(int plr,int min,int max,int pmin,int pmax) {
 		pcost=potion_cost_L(id);
 		if(cost<min || cost>max) continue;
 		if(pcost<pmin || pcost>pmax) continue;
+		if(!can_buy_L(id)) continue;
+		/* TODO heed cards that reduce cost, like bridge */
 		printf("%c. %s (cost %d money, %d potions, %d left)\n",mapn+'a',card[id].fullname,cost,pcost,pile[i].cards);
 		map[mapn++]=i;
 	}
@@ -799,17 +851,10 @@ static void playgame() {
 		puts("buy phase!");
 		printf("player has %d actions, %d money, %d buys, %d potions\n",cur->action,cur->money,cur->buy,cur->potion);
 		buyphase();
-
 		/* toss play area into discard */
 		while(cur->playarean) movepile(cur->playarea,&cur->playarean,cur->discard,&cur->discardn);
 		/* toss hand into discard */
 		while(cur->handn) movepile(cur->hand,&cur->handn,cur->discard,&cur->discardn);
-
-		printf("player has:\n");
-		for(i=0;i<cur->deckn;i++) printf("%s ",card[cur->deck[i]].fullname);
-		for(i=0;i<cur->discardn;i++) printf("%s ",card[cur->discard[i]].fullname);
-		printf("\n");
-
 		/* draw 5 new cards */
 		for(i=0;i<5;i++) drawcard(currentplayer);
 		currentplayer=(currentplayer+1)%players;

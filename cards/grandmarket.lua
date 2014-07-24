@@ -10,6 +10,21 @@ function potion_cost()
   return 0
 end
 
+function can_buy()
+  -- cannot buy if there is copper in play
+  cur=get_currentplayer()
+  n=get_player_playarean(cur)
+  -- go through each card in current player's play area and check for copper
+  for i=0,n-1,1 do
+    id=get_player_playarea(cur,i)
+    name=get_card_fullname(id)
+    if name=="Copper" then
+      return 0
+    end
+  end
+  return 1
+end
+
 function on_setup()
   cards=10
   pileid=get_piles()

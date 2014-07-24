@@ -13,6 +13,10 @@ function potion_cost()
   return 0
 end
 
+function can_buy()
+  return 1
+end
+
 function on_setup()
   if get_players()==2 then
     cards=8

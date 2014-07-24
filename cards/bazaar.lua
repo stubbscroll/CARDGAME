@@ -16,6 +16,10 @@ function potion_cost()
   return 0
 end
 
+function can_buy()
+  return 1
+end
+
 function on_setup()
   cards=10
   pileid=get_piles()

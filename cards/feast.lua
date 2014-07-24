@@ -15,6 +15,10 @@ function on_play()
 --  gain_card(0,5)
 end
 
+function can_buy()
+  return 1
+end
+
 function on_setup()
   cards=10
   pileid=get_piles()
