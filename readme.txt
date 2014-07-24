@@ -68,7 +68,12 @@ as young witch, black market, urchin, tournament etc.
 
 on_play()
 
-this happens when a card is played in the action or buy phases.
+this is called when a card is played in the action or buy phases.
+
+can_buy()
+
+returns whether it's possible to buy the card in the given situation.
+example: can't buy grand market with copper in play.
 
 victory_points()
 

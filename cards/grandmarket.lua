@@ -1,3 +1,10 @@
+function on_play()
+  add_action(1)
+  add_card(1)
+  add_buy(1)
+  add_money(2)
+end
+
 function victory_points()
   return 0
 end

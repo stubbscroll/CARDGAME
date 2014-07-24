@@ -143,6 +143,7 @@ static void drawcard(int ix) {
 		discardtodeck(ix);
 		shuffledeck(ix);
 	}
+	printf("current player draws %s.\n",card[player[ix].deck[player[ix].deckn-1]].fullname);
 	player[ix].hand[player[ix].handn++]=player[ix].deck[--player[ix].deckn];
 }
 
@@ -517,8 +518,11 @@ static int L_get_players(lua_State *L) {
 
 /* give current player cards */
 static int L_add_card(lua_State *L) {
+	int i;
 	CHECKARG(1); ISNUM(1);
-	/* todo draw cards */
+	i=TONUM(1);
+	if(i<0) error("%s: must draw nonnegative number of cards, not %d.\n",__func__+2,i);
+	while(i--) drawcard(currentplayer);
 	return 0;
 }
 
@@ -748,7 +752,7 @@ static void actionphase() {
 	int num,i,j;
 	int list[MAXCARD];
 	char s[MAXSMALLS];
-	while((num=countcardsmask(TYPE_ACTION))) {
+	while(cur->action && (num=countcardsmask(TYPE_ACTION))) {
 		printf("type 1 to %d to play an action card or 0 to skip.\n",num);
 		for(i=j=0;i<cur->handn;i++)
 			if(card[player[currentplayer].hand[i]].type&TYPE_ACTION) {
@@ -762,6 +766,7 @@ static void actionphase() {
 				if(!j) return;
 				else {
 					playcard(cur->hand[list[j-1]]);
+					cur->action--;
 					movecard(list[j-1],cur->hand,&cur->handn,cur->playarea,&cur->playarean);
 					break;
 				}
@@ -801,7 +806,7 @@ static int choosepiletogain(int plr,int min,int max,int pmin,int pmax) {
 }
 
 static void buyphase() {
-	int num,i,j,pid;
+	int num,i,j,pid,id;
 	int list[MAXCARD];
 	char s[MAXSMALLS];
 	while((num=countcardsmask(TYPE_TREASURE))) {
@@ -831,10 +836,13 @@ buy:
 	/* TODO take into account cards that change the money values, for
 	   example increasing copper value by 1 */
 	while(player[currentplayer].buy) {
-		printf("you have %d money and %d potions!\n",player[currentplayer].money,player[currentplayer].potion);
+		printf("you have %d money, %d potions and %d buys!\n",player[currentplayer].money,player[currentplayer].potion,player[currentplayer].buy);
 		if((pid=choosepiletogain(currentplayer,0,player[currentplayer].money,0,player[currentplayer].potion))>-1) {
-			gaincardfromsupply(pid,currentplayer);
+			id=pile[pid].card[pile[pid].cards-1];
 			player[currentplayer].buy--;
+			player[currentplayer].money-=money_cost_L(id);
+			player[currentplayer].potion-=potion_cost_L(id);
+			gaincardfromsupply(pid,currentplayer);
 		} else break;
 	}
 }
@@ -855,6 +863,9 @@ static void playgame() {
 		printf("player has %d actions, %d money, %d buys, %d potions\n",cur->action,cur->money,cur->buy,cur->potion);
 		buyphase();
 		/* toss play area into discard */
+		/* TODO heed cards that has effect when moving to discard, such as
+		   walled's village. remember that throne room, king's court and procession
+		   count as one action each for walled village */
 		while(cur->playarean) movepile(cur->playarea,&cur->playarean,cur->discard,&cur->discardn);
 		/* toss hand into discard */
 		while(cur->handn) movepile(cur->hand,&cur->handn,cur->discard,&cur->discardn);
