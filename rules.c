@@ -727,14 +727,15 @@ static void actionphase() {
 static int choosepiletogain(int plr,int min,int max,int pmin,int pmax) {
 	int i,map[MAXPILES],mapn,cost,id,pcost;
 	char s[10],c;
-	printf("press letter to gain a card, or 0 to not gain\n");
+	printf("press one of the letters below:\n");
+	puts("0. don't gain");
 	for(mapn=i=0;i<piles;i++) if(pile[i].supply && pile[i].cards) {
 		id=pile[i].card[pile[i].cards-1];
 		cost=money_cost_L(id);
 		pcost=potion_cost_L(id);
 		if(cost<min || cost>max) continue;
 		if(pcost<pmin || pcost>pmax) continue;
-		printf("%c. %s (cost %d)\n",mapn+'a',card[id].fullname,cost);
+		printf("%c. %s (cost %d money, %d potions, %d left)\n",mapn+'a',card[id].fullname,cost,pcost,pile[i].cards);
 		map[mapn++]=i;
 	}
 	while(1) {
@@ -764,7 +765,7 @@ static void buyphase() {
 			scanf(scans,s);
 			if(isinteger(s)) {
 				j=strtol(s,0,10);
-				if(!j) return;
+				if(!j) goto buy;
 				else {
 					playcard(cur->hand[list[j-1]]);
 					movecard(list[j-1],cur->hand,&cur->handn,cur->playarea,&cur->playarean);
@@ -773,10 +774,11 @@ static void buyphase() {
 			}
 		}
 	}
+buy:
 	while(player[currentplayer].buy) {
 		printf("you have %d money and %d potions!\n",player[currentplayer].money,player[currentplayer].potion);
 		if((pid=choosepiletogain(currentplayer,0,player[currentplayer].money,0,player[currentplayer].potion))>-1) {
-			gaincardfromsupply(currentplayer,pid);
+			gaincardfromsupply(pid,currentplayer);
 			player[currentplayer].buy--;
 		} else break;
 	}
@@ -787,6 +789,7 @@ static void playgame() {
 	for(i=0;i<players;i++) for(j=0;j<5;j++) drawcard(i);
 	while(1) {
 		cur=&player[currentplayer];
+		puts("===============================================================================");
 		printf("player %d plays and has",currentplayer);
 		resetplayerturn(currentplayer);
 		for(i=0;i<cur->handn;i++) printf(" %s",card[cur->hand[i]].fullname);
@@ -796,8 +799,17 @@ static void playgame() {
 		puts("buy phase!");
 		printf("player has %d actions, %d money, %d buys, %d potions\n",cur->action,cur->money,cur->buy,cur->potion);
 		buyphase();
+
+		/* toss play area into discard */
+		while(cur->playarean) movepile(cur->playarea,&cur->playarean,cur->discard,&cur->discardn);
 		/* toss hand into discard */
 		while(cur->handn) movepile(cur->hand,&cur->handn,cur->discard,&cur->discardn);
+
+		printf("player has:\n");
+		for(i=0;i<cur->deckn;i++) printf("%s ",card[cur->deck[i]].fullname);
+		for(i=0;i<cur->discardn;i++) printf("%s ",card[cur->discard[i]].fullname);
+		printf("\n");
+
 		/* draw 5 new cards */
 		for(i=0;i<5;i++) drawcard(currentplayer);
 		currentplayer=(currentplayer+1)%players;
