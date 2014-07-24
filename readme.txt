@@ -8,8 +8,8 @@ gigantic warning: i can't lua. proceed at your own risk.
 ==============================================================================
 SHORT-TERM TODO
 
-- implement can_buy or something like that to call from buyroutine (grand
-  market)
+- implement on_play() for the easy action cards
+- implement add_cards_L() called by lua
 - implement fancy cost function for peddler
 - check for game over: empty province (or empty colony) or 3 empty supply
   piles

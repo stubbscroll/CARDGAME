@@ -10,15 +10,12 @@
 #include "dir.h"
 
 /* stuff to support
-   - buying cards such as grand market which can not be bought with copper in
-     play
    - reaction cards, duration cards etc. in particular, moat that blocks all
      attacks
    - victory cards with scripted number of victory points, like garden
    - treasure cards with scripted number of money, like bank and fool's gold
    - trade route, with trade route mat and token on each victory card supply
    - victory point tokens
-   - young witch and bane cards
    - distinguish with in-play effects and added effects
    - "while in play" effects, such as hoard (when you buy a victory card, gain
      a gold)
@@ -33,8 +30,8 @@
    - players buys young witch via black market which triggers bane setup
    - scheme which has an effect long after playing (in clean-up). beware
      throne room, king's court, procession.
+   - coppersmith increases copper value by 1, and it's cumulative
    suggestions
-   - have can_buy() in each card returning true/false
    - have get_money() in each treasure card returning value
    - have get_victory() in each victory card returning value
 
@@ -142,7 +139,7 @@ static void shuffledeck(int ix) {
 
 static void drawcard(int ix) {
 	if(!player[ix].deckn) {
-		if(!player[ix].discardn) return;
+		if(!player[ix].discardn) return; /* no more cards to draw! give up */
 		discardtodeck(ix);
 		shuffledeck(ix);
 	}
@@ -246,6 +243,7 @@ static void generatenewgame() {
 	addpiletogamebyname("estate");
 	addpiletogamebyname("duchy");
 	addpiletogamebyname("province");
+	/* the rules sayeth that curse cards are present in every game */
 	addpiletogamebyname("curse");
 	for(i=0;i<KINGDOM;i++) {
 		do j=rand()%groups; while(group[j].taken || !group[j].iskingdom);
@@ -827,6 +825,11 @@ static void buyphase() {
 		}
 	}
 buy:
+	/* the rules for prosperity clarifies the following: it's not allowed to play
+	   treasure cards after buying a card! so no playing copper after buying grand
+	   market. */
+	/* TODO take into account cards that change the money values, for
+	   example increasing copper value by 1 */
 	while(player[currentplayer].buy) {
 		printf("you have %d money and %d potions!\n",player[currentplayer].money,player[currentplayer].potion);
 		if((pid=choosepiletogain(currentplayer,0,player[currentplayer].money,0,player[currentplayer].potion))>-1) {

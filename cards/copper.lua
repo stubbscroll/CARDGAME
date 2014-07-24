@@ -1,4 +1,5 @@
 function on_play()
+  -- TODO add 1 per coppersmith played
   add_money(1)
 end
 
